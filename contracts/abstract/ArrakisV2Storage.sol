@@ -23,7 +23,7 @@ import {
 import {
     EnumerableSet
 } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import {Range, Rebalance, InitializePayload} from "../structs/SArrakisV2.sol";
+import {Range, Rebalance, InitializePayload, UserLiquidityInfo} from "../structs/SArrakisV2.sol";
 import {hundredPercent} from "../constants/CArrakisV2.sol";
 
 /// @title ArrakisV2Storage base contract containing all ArrakisV2 storage variables.
@@ -35,6 +35,8 @@ abstract contract ArrakisV2Storage is
 {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
+
+    
 
     IUniswapV3Factory public immutable factory;
 
@@ -53,6 +55,16 @@ abstract contract ArrakisV2Storage is
     address public restrictedMint;
 
     // #endregion manager data
+
+    // #region UserLiquidityInfo data
+
+    uint256 public totalLiquidity;
+    uint256 public accumulatedRewardsPerShare0; // Recompensas acumuladas para token0
+    uint256 public accumulatedRewardsPerShare1; // Recompensas acumuladas para token1
+    mapping(address => UserLiquidityInfo) public userLiquidityInfo;
+    uint256 public constant REWARDS_PRECISION = 1e12; // Precisión para evitar errores de redondeo
+
+    // #endregion UserLiquidityInfo data
 
     Range[] internal _ranges;
 
@@ -385,8 +397,25 @@ abstract contract ArrakisV2Storage is
 
     function _applyFees(uint256 fee0_, uint256 fee1_) internal {
         uint16 mManagerFeeBPS = managerFeeBPS;
-        managerBalance0 += (fee0_ * mManagerFeeBPS) / hundredPercent;
-        managerBalance1 += (fee1_ * mManagerFeeBPS) / hundredPercent;
+
+        // Calcular la cantidad que corresponde al manager y añadir a lo que ya tiene
+        uint256 managerFee0 = (fee0_ * mManagerFeeBPS) / hundredPercent;
+        uint256 managerFee1 = (fee1_ * mManagerFeeBPS) / hundredPercent;
+
+        // Añadir a lo que ya tiene
+        managerBalance0 += managerFee0;
+        managerBalance1 += managerFee1;
+
+        // Quitamos la parte del manager de los fees que se van a distribuir
+        uint256 remainingFee0 = fee0_ - managerFee0;
+        uint256 remainingFee1 = fee1_ - managerFee1;
+
+        // Si hay liquidez en la pool, distribuir los fees entre los usuarios
+        if (totalLiquidity > 0) {
+            // Actualizar las recompensas acumuladas para cada token
+            accumulatedRewardsPerShare0 += (remainingFee0 * REWARDS_PRECISION) / totalLiquidity;
+            accumulatedRewardsPerShare1 += (remainingFee1 * REWARDS_PRECISION) / totalLiquidity;
+        }
     }
 
     // #endregion internal functions

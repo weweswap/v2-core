@@ -17,7 +17,7 @@ import {
     Rebalance
 } from "./abstract/ArrakisV2Storage.sol";
 import {FullMath} from "@arrakisfi/v3-lib-0.8/contracts/LiquidityAmounts.sol";
-import {Withdraw, UnderlyingPayload} from "./structs/SArrakisV2.sol";
+import {Withdraw, UnderlyingPayload, UserLiquidityInfo} from "./structs/SArrakisV2.sol";
 import {Position} from "./libraries/Position.sol";
 import {Pool} from "./libraries/Pool.sol";
 import {Underlying as UnderlyingHelper} from "./libraries/Underlying.sol";
@@ -63,6 +63,11 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         address me = address(this);
         uint256 ts = totalSupply();
         bool isTotalSupplyGtZero = ts > 0;
+
+        lmCollectFees();
+
+        totalLiquidity += mintAmount_;
+
         if (isTotalSupplyGtZero) {
             (amount0, amount1) = UnderlyingHelper.totalUnderlyingForMint(
                 UnderlyingPayload({
@@ -168,6 +173,10 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
 
         uint256 ts = totalSupply();
         require(ts > 0, "TS");
+
+        lmCollectFees();
+
+        totalLiquidity -= burnAmount_;
 
         _burn(msg.sender, burnAmount_);
 
@@ -419,6 +428,39 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         _withdrawManagerBalance();
     }
 
+    function lmCollectFees() external {
+        Withdraw memory total;
+        for (uint256 i; i < _ranges.length; i++) {
+            // Para cada rango que tengamos en la pool WEWE/USDC
+            Range memory range = _ranges[i];
+            IUniswapV3Pool pool = IUniswapV3Pool(
+                factory.getPool(address(token0), address(token1), range.feeTier)
+            );
+
+            (uint256 collect0, uint256 collect1) = _collectFees(
+                pool,
+                range.lowerTick,
+                range.upperTick
+            );
+            total.fee0 += collect0;
+            total.fee1 += collect1;
+        }
+        _applyUSDCFees(total);
+        _updateAllUserRewardDebt();
+    }
+
+    function claimFees() external {
+        // Tenemos que actualizar el rewardDebt llamando al _applyUSDCFees antes?
+        UserLiquidityInfo storage userInfo = userLiquidityInfo[msg.sender];
+
+        require(userInfo.rewardDebtUSDC > 0, "No rewards available");
+        
+        // TODO: check if token0 o token1 es USDC
+        token0.safeTransfer(msg.sender, userInfo.rewardDebtUSDC);
+
+        userInfo.rewardDebtUSDC = 0;
+    }
+
     function _withdraw(
         IUniswapV3Pool pool_,
         int24 lowerTick_,
@@ -439,5 +481,56 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
 
         withdraw.fee0 = collect0 - withdraw.burn0;
         withdraw.fee1 = collect1 - withdraw.burn1;
+    }
+
+    function _swapToUSDC(
+        address token,
+        uint256 feesToken
+    ) internal returns (uint256 feesToken) {
+        require(token != address(USDC) && feesToken > 0, "LM: Amount must be greater than 0 and not a USDC token");
+
+        // Aprobar el router para gastar el token
+        IERC20(token).approve(address(router), feesToken);
+
+        // Configurar los parámetros para ExactInputSingleParams
+        IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter.ExactInputSingleParams({
+            tokenIn: address(token),
+            tokenOut: address(USDC),
+            fee: poolConfiguration.fee,
+            recipient: address(this),
+            amountIn: feesToken,
+            amountOutMinimum: 0,
+            sqrtPriceLimitX96: 0
+        });
+
+        // Ejecutar el swap
+        feesUSDC = router.exactInputSingle(params);
+    }
+
+    /// @dev This function wraps the _applyFees to use only one token without 
+    /// breaking the current logic of Arrakis
+    function _applyUSDCFees(Withdraw memory withdraw) internal {
+        uint256 usdcFee;
+
+        // Solo meter a usdcFee el fee del token que no sea USDC
+        if (address(token0) != address(USDC)) {
+            usdcFee += _swapToUSDC(address(token0), withdraw.fee0);
+        }
+        if (address(token1) != address(USDC)) {
+            usdcFee += _swapToUSDC(address(token1), withdraw.fee1);
+        }
+        _applyFees(usdcFee, 0);
+    }
+
+    function _updateAllUserRewardDebt() internal {
+        // Recorremos todos los usuarios que tienen liquidez en la pool
+        for (uint256 i = 0; i < _pools.length(); i++) {
+            address user = _pools.at(i);
+            UserLiquidityInfo storage userInfo = userLiquidityInfo[user];
+
+            // Actualizamos su rewardDebt con los valores actuales
+            userInfo.rewardDebtUSDC = 
+                (userInfo.liquidity * accumulatedRewardsPerShare0) / REWARDS_PRECISION;
+        }
     }
 }

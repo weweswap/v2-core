@@ -116,4 +116,9 @@ struct RangeData {
     IUniswapV3Pool pool;
 }
 
+struct UserLiquidityInfo {
+    uint256 liquidity;
+    uint256 rewardDebtUSDC;     // Cantidad de rewards que no puede reclamar para token USDC
+}
+
 // #endregion internal Structs
