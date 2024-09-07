@@ -461,7 +461,7 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
             total.fee0 += collect0;
             total.fee1 += collect1;
         }
-        _applyUSDCFees(total);
+        _applyUSDCFees(total.fee0, total.fee1);
         _updateAllUserRewardDebt();
     }
 
@@ -514,15 +514,15 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
 
     /// @dev This function wraps the _applyFees to use only one token without 
     /// breaking the current logic of Arrakis
-    function _applyUSDCFees(Withdraw memory withdraw) internal {
+    function _applyUSDCFees(uint256 fee0, uint256 fee1) internal {
         uint256 usdcFee;
 
         // Solo meter a usdcFee el fee del token que no sea USDC TODO: Literals
         if (address(token0) != address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)) {
-            usdcFee += _swapToUSDC(address(token0), withdraw.fee0);
+            usdcFee += _swapToUSDC(address(token0), fee0);
         }
         if (address(token1) != address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)) {
-            usdcFee += _swapToUSDC(address(token1), withdraw.fee1);
+            usdcFee += _swapToUSDC(address(token1), fee1);
         }
         _applyFees(usdcFee, 0);
     }
