@@ -1,0 +1,51 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 14.15.3
+
+      - name: Restore Yarn cache
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: yarn-packages-${{ hashFiles('yarn.lock') }}
+          restore-keys: |
+            yarn-packages-
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build project
+        run: yarn build
+
+      - name: Run Prettier
+        run: yarn format
+
+      - name: Run ESLint
+        run: yarn lint
+
+      - name: Run Solidity Coverage
+        run: yarn hardhat coverage
+
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@v2.1.2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+

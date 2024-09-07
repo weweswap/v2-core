@@ -23,13 +23,13 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   }
 
   const { deploy } = deployments;
-  const { deployer, arrakisMultiSig, owner } = await getNamedAccounts();
+  const { deployer, owner } = await getNamedAccounts();
 
   await deploy("ArrakisV2Factory", {
     from: deployer,
     proxy: {
       proxyContract: "OpenZeppelinTransparentProxy",
-      owner: arrakisMultiSig,
+      owner: owner,
       execute: {
         methodName: "initialize",
         args: [owner],
