@@ -26,36 +26,35 @@ const config: HardhatUserConfig = {
     deployer: {
       default: 0,
     },
-    arrakisMultiSig: {
-      default: 1,
-      polygon: "0xd06a7cc1a162fDfB515595A2eC1c47B75743C381",
-      mainnet: "0xb9229ea965FC84f21b63791efC643b2c7ffB77Be",
-      optimism: "0x283824e5A6378EaB2695Be7d3cb0919186e37D7C",
-      arbitrum: "0x64520Dc190b5015E7d48E87273f6EE69197Cd798",
-      goerli: "0xB4fa2C382dAf08531F8BA4515F409A129beCFd02",
-      sepolia: "0x81a1e7F34b9bABf172087cF5df8A4DF6500e9d4d",
-      base: "0x463a4a038038DE81525f55c456f071241e0a3E66",
-      base_goerli: "0x0F83FFe2d0779550E74D96B3871216132D527eF5", // eslint-disable-line @typescript-eslint/naming-convention
-      binance: "0x2CcDA3A99A41342Eb5Ff3c8173828Ac0C5311fba",
-      gnosis: "0x05b1811546e65Dec3Eb703a13aA2885B4f51a32f",
-    },
     owner: {
-      default: 2,
-      polygon: "0xDEb4C33D5C3E7e32F55a9D6336FE06010E40E3AB",
-      mainnet: "0x5108EF86cF493905BcD35A3736e4B46DeCD7de58",
-      optimism: "0x8636600A864797Aa7ac8807A065C5d8BD9bA3Ccb",
-      arbitrum: "0x77BADa8FC2A478f1bc1E1E4980916666187D0dF7",
-      goerli: "0xDb651b0C70C67181B1807B29d9097DD556b2eC4b",
-      sepolia: "0x09E60942D910D3399961b845d4479627F0FE2C43",
-      base: "0x25CF23B54e25daaE3fe9989a74050b953A343823",
-      base_goerli: "0x4788290e1fb26c537cBfBb5a8b4E1432795BeEbD", // eslint-disable-line @typescript-eslint/naming-convention
-      binance: "0x7ddBE55B78FbDe1B0A0b57cc05EE469ccF700585",
-      gnosis: "0x969cA3961FCeaFd3Cb3C1CA9ecdd475babcD704D",
+      default: 1,
+      polygon: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
+      mainnet: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
+      optimism: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
+      arbitrum: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
+      goerli: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
+      sepolia: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
+      base: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
+      base_goerli: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae", // eslint-disable-line @typescript-eslint/naming-convention
+      binance: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
+      gnosis: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
     },
   },
 
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
+    apiKey: {
+      base: process.env.BASESCAN_API_KEY || "",
+    },
+    customChains: [
+      {
+        network: "base",
+        chainId: 8453,
+        urls: {
+          apiURL: "https://api.basescan.org/api",
+          browserURL: "https://basescan.org",
+        },
+      },
+    ],
   },
 
   networks: {

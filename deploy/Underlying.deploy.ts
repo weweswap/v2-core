@@ -43,7 +43,7 @@ func.skip = async (hre: HardhatRuntimeEnvironment) => {
     hre.network.name === "optimism" ||
     hre.network.name === "arbitrum" ||
     hre.network.name === "binance" ||
-    hre.network.name === "base" ||
+    // hre.network.name === "base" ||
     hre.network.name === "base_goerli" ||
     hre.network.name === "sepolia" ||
     hre.network.name === "gnosis";

@@ -23,13 +23,13 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   }
 
   const { deploy } = deployments;
-  const { deployer, arrakisMultiSig, owner } = await getNamedAccounts();
+  const { deployer, owner } = await getNamedAccounts();
 
   await deploy("ArrakisV2Factory", {
     from: deployer,
     proxy: {
       proxyContract: "OpenZeppelinTransparentProxy",
-      owner: arrakisMultiSig,
+      owner: owner,
       execute: {
         methodName: "initialize",
         args: [owner],
@@ -50,7 +50,7 @@ func.skip = async (hre: HardhatRuntimeEnvironment) => {
     hre.network.name === "optimism" ||
     hre.network.name === "arbitrum" ||
     hre.network.name === "binance" ||
-    hre.network.name === "base" ||
+    // hre.network.name === "base" ||
     hre.network.name === "base_goerli" ||
     hre.network.name === "sepolia" ||
     hre.network.name === "gnosis";

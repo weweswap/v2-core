@@ -22,7 +22,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     );
     await sleep(10000);
   }
-
+  console.log('hre.network.name')
   const addresses: Addresses = getAddresses(hre.network.name);
   const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
@@ -48,7 +48,7 @@ func.skip = async (hre: HardhatRuntimeEnvironment) => {
     hre.network.name === "optimism" ||
     hre.network.name === "arbitrum" ||
     hre.network.name === "binance" ||
-    hre.network.name === "base" ||
+    // hre.network.name === "base" ||
     hre.network.name === "base_goerli" ||
     hre.network.name === "sepolia" ||
     hre.network.name === "gnosis";
