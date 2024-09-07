@@ -122,9 +122,9 @@ export const getAddresses = (network: string): Addresses => {
       return {
         UniswapV3Factory: "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
         SwapRouter: "0x2626664c2603336E57B271c5C0b26F421741e481",
-        WETH: "",
+        WETH: "0x4200000000000000000000000000000000000006",
         WMATIC: "",
-        USDC: "",
+        USDC: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
         ArrakisV2Implementation: "0x7F346F1eB7a65fF83f51B3FD76dCc70979e6DF38",
         ArrakisV2Beacon: "0x1D91F6D917ec51dE53A5789c34fFF777a58759B6",
         ArrakisV2Factory: "0xECb8Ffcb2369EF188A082a662F496126f66c8288",
