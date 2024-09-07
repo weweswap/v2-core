@@ -7,6 +7,7 @@ import {
 import {
     IUniswapV3Pool
 } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import {ISwapRouter02} from "../univ3-0.8/ISwapRouter02.sol";
 import {
     IERC20,
     SafeERC20
@@ -37,7 +38,7 @@ abstract contract ArrakisV2Storage is
     using EnumerableSet for EnumerableSet.AddressSet;
 
     
-
+    ISwapRouter02 public immutable swapRouter = ISwapRouter02(0x2626664c2603336E57B271c5C0b26F421741e481);
     IUniswapV3Factory public immutable factory;
 
     IERC20 public token0;
@@ -58,7 +59,7 @@ abstract contract ArrakisV2Storage is
 
     // #region UserLiquidityInfo data
 
-    uint256 public totalLiquidity;
+    uint256 public totalLiquidity; // TODO: Liquidez total de los holders
     uint256 public accumulatedRewardsPerShare0; // Recompensas acumuladas para token0
     uint256 public accumulatedRewardsPerShare1; // Recompensas acumuladas para token1
     mapping(address => UserLiquidityInfo) public userLiquidityInfo;
