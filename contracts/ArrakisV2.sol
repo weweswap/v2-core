@@ -8,10 +8,6 @@ import {
     IUniswapV3Pool
 } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {
-    IV3SwapRouter
-} from "./univ3-0.8/IV3SwapRouter.sol";
-import {ISwapRouter02} from "./univ3-0.8/ISwapRouter02.sol";
-import {
     IUniswapV3Factory,
     ArrakisV2Storage,
     IERC20,
@@ -436,7 +432,7 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         // Tenemos que actualizar el rewardDebt llamando al _applyUSDCFees antes?
         UserLiquidityInfo storage userInfo = userLiquidityInfo[msg.sender];
 
-        require(userInfo.rewardDebtUSDC > 0, "No rewards available");
+        require(userInfo.rewardDebtUSDC > 0, "NRA");
         
         // TODO: check if token0 o token1 es USDC
         token0.safeTransfer(msg.sender, userInfo.rewardDebtUSDC);
@@ -463,79 +459,5 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         }
         _applyUSDCFees(total.fee0, total.fee1);
         _updateAllUserRewardDebt();
-    }
-
-    function _withdraw(
-        IUniswapV3Pool pool_,
-        int24 lowerTick_,
-        int24 upperTick_,
-        uint128 liquidity_
-    ) internal returns (Withdraw memory withdraw) {
-        (withdraw.burn0, withdraw.burn1) = pool_.burn(
-            lowerTick_,
-            upperTick_,
-            liquidity_
-        );
-
-        (uint256 collect0, uint256 collect1) = _collectFees(
-            pool_,
-            lowerTick_,
-            upperTick_
-        );
-
-        withdraw.fee0 = collect0 - withdraw.burn0;
-        withdraw.fee1 = collect1 - withdraw.burn1;
-    }
-
-    function _swapToUSDC(
-        address token,
-        uint256 feesToken
-    ) internal returns (uint256 feesUSDC) { // TODO: Literals
-        require(token != address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913) && feesToken > 0,
-            "LM: Amount must be greater than 0 and not a USDC token");
-
-        // Aprobar el router para gastar el token TODO: Literals
-        IERC20(token).approve(address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913), feesToken);
-
-        // Configurar los parámetros para ExactInputSingleParams TODO: Literals
-        IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter.ExactInputSingleParams({
-            tokenIn: address(token),
-            tokenOut: address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913),
-            fee: 500,
-            recipient: address(this),
-            amountIn: feesToken,
-            amountOutMinimum: 0,
-            sqrtPriceLimitX96: 0
-        });
-
-        // Ejecutar el swap TODO: Literals
-        feesUSDC = swapRouter.exactInputSingle(params);
-    }
-
-    /// @dev This function wraps the _applyFees to use only one token without 
-    /// breaking the current logic of Arrakis
-    function _applyUSDCFees(uint256 fee0, uint256 fee1) internal {
-        uint256 usdcFee;
-
-        // Solo meter a usdcFee el fee del token que no sea USDC TODO: Literals
-        if (address(token0) != address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)) {
-            usdcFee += _swapToUSDC(address(token0), fee0);
-        }
-        if (address(token1) != address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)) {
-            usdcFee += _swapToUSDC(address(token1), fee1);
-        }
-        _applyFees(usdcFee, 0);
-    }
-
-    function _updateAllUserRewardDebt() internal {
-        // TODO: Recoger los usuarios holders
-        for (uint256 i = 0; i < _pools.length(); i++) {
-            address user = _pools.at(i);
-            UserLiquidityInfo storage userInfo = userLiquidityInfo[user];
-
-            // Actualizamos su rewardDebt con los valores actuales
-            userInfo.rewardDebtUSDC = 
-                (userInfo.liquidity * accumulatedRewardsPerShare0) / REWARDS_PRECISION;
-        }
     }
 }
