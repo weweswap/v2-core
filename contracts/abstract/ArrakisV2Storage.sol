@@ -35,6 +35,7 @@ import {
     Withdraw
 } from "../structs/SArrakisV2.sol";
 import {hundredPercent} from "../constants/CArrakisV2.sol";
+import {MathLib} from "../libraries/MathLib.sol"; 
 
 /// @title ArrakisV2Storage base contract containing all ArrakisV2 storage variables.
 // solhint-disable-next-line max-states-count
@@ -45,7 +46,7 @@ abstract contract ArrakisV2Storage is
 {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
-
+    using MathLib for uint256;
     
     ISwapRouter02 public immutable swapRouter = ISwapRouter02(0x2626664c2603336E57B271c5C0b26F421741e481);
     IUniswapV3Factory public immutable factory;
@@ -409,8 +410,8 @@ abstract contract ArrakisV2Storage is
         uint16 mManagerFeeBPS = managerFeeBPS;
 
         // Calcular la cantidad que corresponde al manager y añadir a lo que ya tiene
-        uint256 managerFee0 = (fee0_ * mManagerFeeBPS) / hundredPercent;
-        uint256 managerFee1 = (fee1_ * mManagerFeeBPS) / hundredPercent;
+        uint256 managerFee0 = MathLib.mulDiv(fee0_, mManagerFeeBPS, hundredPercent);
+        uint256 managerFee1 = MathLib.mulDiv(fee1_, mManagerFeeBPS, hundredPercent);
 
         // Añadir a lo que ya tiene
         managerBalance0 += managerFee0;
@@ -423,8 +424,8 @@ abstract contract ArrakisV2Storage is
         // Si hay liquidez en la pool, distribuir los fees entre los usuarios
         if (totalLiquidity > 0) {
             // Actualizar las recompensas acumuladas para cada token
-            accumulatedRewardsPerShare0 += (remainingFee0 * REWARDS_PRECISION) / totalLiquidity;
-            accumulatedRewardsPerShare1 += (remainingFee1 * REWARDS_PRECISION) / totalLiquidity;
+            accumulatedRewardsPerShare0 += MathLib.mulDiv(remainingFee0, REWARDS_PRECISION, totalLiquidity);
+            accumulatedRewardsPerShare1 += MathLib.mulDiv(remainingFee1, REWARDS_PRECISION, totalLiquidity);
         }
     }
 
@@ -434,9 +435,9 @@ abstract contract ArrakisV2Storage is
             address user = _pools.at(i);
             UserLiquidityInfo storage userInfo = userLiquidityInfo[user];
 
-            // Actualizamos su rewardDebt con los valores actuales
+            // Actualizamos su rewardDebt con los valores actuales TODO: revisar si esto está bien dividir entre el REWARDS_PRECISION
             userInfo.rewardDebtUSDC = 
-                (userInfo.liquidity * accumulatedRewardsPerShare0) / REWARDS_PRECISION;
+                MathLib.mulDiv(userInfo.liquidity, accumulatedRewardsPerShare0, REWARDS_PRECISION); 
         }
     }
 
