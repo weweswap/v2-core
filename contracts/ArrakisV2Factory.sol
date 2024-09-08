@@ -53,7 +53,7 @@ contract ArrakisV2Factory is ArrakisV2FactoryStorage {
     {
         string memory symbol0 = IERC20Metadata(token0_).symbol();
         string memory symbol1 = IERC20Metadata(token1_).symbol();
-        return _append("Arrakis Vault V2 ", symbol0, "/", symbol1);
+        return _append("WEWESwap Vault V1 ", symbol0, "/", symbol1);
     }
 
     /// @notice get a list of vaults created by this factory
@@ -100,7 +100,7 @@ contract ArrakisV2Factory is ArrakisV2FactoryStorage {
             params_.token1
         );
 
-        string memory name = "Arrakis Vault V2";
+        string memory name = "WEWESwap Vault V1";
         try this.getTokenName(token0, token1) returns (string memory result) {
             name = result;
         } catch {} // solhint-disable-line no-empty-blocks
@@ -108,7 +108,7 @@ contract ArrakisV2Factory is ArrakisV2FactoryStorage {
         bytes memory data = abi.encodeWithSelector(
             IArrakisV2.initialize.selector,
             name,
-            string(abi.encodePacked("RAKISv2-", _uint2str(numVaults() + 1))),
+            string(abi.encodePacked("WEWEv1-", _uint2str(numVaults() + 1))),
             params_
         );
 
