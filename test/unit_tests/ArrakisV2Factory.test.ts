@@ -119,14 +119,14 @@ describe("Factory function unit test", function () {
       user
     )) as ArrakisV2;
 
-    expect(await vaultV2.name()).to.be.eq("Arrakis Vault V2 USDC/WETH");
-    expect(await vaultV2.symbol()).to.be.eq("RAKISv2-1");
+    expect(await vaultV2.name()).to.be.eq("WEWESwap Vault V1 USDC/WETH");
+    expect(await vaultV2.symbol()).to.be.eq("WEWEv1-1");
   });
 
   it("#1: unit test get token name", async () => {
     expect(
       await arrakisV2Factory.getTokenName(addresses.USDC, addresses.WETH)
-    ).to.be.eq("Arrakis Vault V2 USDC/WETH");
+    ).to.be.eq("WEWESwap Vault V1 USDC/WETH");
   });
 
   it("#2: unit test get num vaults", async () => {
