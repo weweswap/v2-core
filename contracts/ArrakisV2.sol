@@ -17,7 +17,7 @@ import {
     Rebalance
 } from "./abstract/ArrakisV2Storage.sol";
 import {FullMath} from "@arrakisfi/v3-lib-0.8/contracts/LiquidityAmounts.sol";
-import {Withdraw, UnderlyingPayload} from "./structs/SArrakisV2.sol";
+import {Withdraw, UnderlyingPayload, UserLiquidityInfo} from "./structs/SArrakisV2.sol";
 import {Position} from "./libraries/Position.sol";
 import {Pool} from "./libraries/Pool.sol";
 import {Underlying as UnderlyingHelper} from "./libraries/Underlying.sol";
@@ -63,6 +63,11 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         address me = address(this);
         uint256 ts = totalSupply();
         bool isTotalSupplyGtZero = ts > 0;
+
+        lmCollectFees();
+
+        totalLiquidity += mintAmount_;
+
         if (isTotalSupplyGtZero) {
             (amount0, amount1) = UnderlyingHelper.totalUnderlyingForMint(
                 UnderlyingPayload({
@@ -168,6 +173,10 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
 
         uint256 ts = totalSupply();
         require(ts > 0, "TS");
+
+        lmCollectFees();
+
+        totalLiquidity -= burnAmount_;
 
         _burn(msg.sender, burnAmount_);
 
@@ -419,25 +428,36 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         _withdrawManagerBalance();
     }
 
-    function _withdraw(
-        IUniswapV3Pool pool_,
-        int24 lowerTick_,
-        int24 upperTick_,
-        uint128 liquidity_
-    ) internal returns (Withdraw memory withdraw) {
-        (withdraw.burn0, withdraw.burn1) = pool_.burn(
-            lowerTick_,
-            upperTick_,
-            liquidity_
-        );
+    function claimFees() external {
+        // Tenemos que actualizar el rewardDebt llamando al _applyUSDCFees antes?
+        UserLiquidityInfo storage userInfo = userLiquidityInfo[msg.sender];
 
-        (uint256 collect0, uint256 collect1) = _collectFees(
-            pool_,
-            lowerTick_,
-            upperTick_
-        );
+        require(userInfo.rewardDebtUSDC > 0, "NRA");
+        
+        // TODO: check if token0 o token1 es USDC
+        token0.safeTransfer(msg.sender, userInfo.rewardDebtUSDC);
 
-        withdraw.fee0 = collect0 - withdraw.burn0;
-        withdraw.fee1 = collect1 - withdraw.burn1;
+        userInfo.rewardDebtUSDC = 0;
+    }
+
+    function lmCollectFees() public {
+        Withdraw memory total;
+        for (uint256 i; i < _ranges.length; i++) {
+            // Para cada rango que tengamos en la pool WEWE/USDC
+            Range memory range = _ranges[i];
+            IUniswapV3Pool pool = IUniswapV3Pool(
+                factory.getPool(address(token0), address(token1), range.feeTier)
+            );
+
+            (uint256 collect0, uint256 collect1) = _collectFees(
+                pool,
+                range.lowerTick,
+                range.upperTick
+            );
+            total.fee0 += collect0;
+            total.fee1 += collect1;
+        }
+        _applyUSDCFees(total.fee0, total.fee1);
+        _updateAllUserRewardDebt();
     }
 }

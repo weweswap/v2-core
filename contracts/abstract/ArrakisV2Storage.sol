@@ -8,6 +8,10 @@ import {
     IUniswapV3Pool
 } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {
+    IV3SwapRouter
+} from "../univ3-0.8/IV3SwapRouter.sol";
+import {ISwapRouter02} from "../univ3-0.8/ISwapRouter02.sol";
+import {
     IERC20,
     SafeERC20
 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -23,8 +27,15 @@ import {
 import {
     EnumerableSet
 } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import {Range, Rebalance, InitializePayload} from "../structs/SArrakisV2.sol";
+import {
+    Range,
+    Rebalance,
+    InitializePayload,
+    UserLiquidityInfo,
+    Withdraw
+} from "../structs/SArrakisV2.sol";
 import {hundredPercent} from "../constants/CArrakisV2.sol";
+import {MathLib} from "../libraries/MathLib.sol"; 
 
 /// @title ArrakisV2Storage base contract containing all ArrakisV2 storage variables.
 // solhint-disable-next-line max-states-count
@@ -35,7 +46,9 @@ abstract contract ArrakisV2Storage is
 {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
-
+    using MathLib for uint256;
+    
+    ISwapRouter02 public immutable swapRouter = ISwapRouter02(0x2626664c2603336E57B271c5C0b26F421741e481);
     IUniswapV3Factory public immutable factory;
 
     IERC20 public token0;
@@ -53,6 +66,16 @@ abstract contract ArrakisV2Storage is
     address public restrictedMint;
 
     // #endregion manager data
+
+    // #region UserLiquidityInfo data
+
+    uint256 public totalLiquidity; // TODO: Liquidez total de los holders
+    uint256 public accumulatedRewardsPerShare0; // Recompensas acumuladas para token0
+    uint256 public accumulatedRewardsPerShare1; // Recompensas acumuladas para token1
+    mapping(address => UserLiquidityInfo) public userLiquidityInfo;
+    uint256 public constant REWARDS_PRECISION = 1e12; // Precisión para evitar errores de redondeo
+
+    // #endregion UserLiquidityInfo data
 
     Range[] internal _ranges;
 
@@ -385,8 +408,99 @@ abstract contract ArrakisV2Storage is
 
     function _applyFees(uint256 fee0_, uint256 fee1_) internal {
         uint16 mManagerFeeBPS = managerFeeBPS;
-        managerBalance0 += (fee0_ * mManagerFeeBPS) / hundredPercent;
-        managerBalance1 += (fee1_ * mManagerFeeBPS) / hundredPercent;
+
+        // Calcular la cantidad que corresponde al manager y añadir a lo que ya tiene
+        uint256 managerFee0 = MathLib.mulDiv(fee0_, mManagerFeeBPS, hundredPercent);
+        uint256 managerFee1 = MathLib.mulDiv(fee1_, mManagerFeeBPS, hundredPercent);
+
+        // Añadir a lo que ya tiene
+        managerBalance0 += managerFee0;
+        managerBalance1 += managerFee1;
+
+        // Quitamos la parte del manager de los fees que se van a distribuir
+        uint256 remainingFee0 = fee0_ - managerFee0;
+        uint256 remainingFee1 = fee1_ - managerFee1;
+
+        // Si hay liquidez en la pool, distribuir los fees entre los usuarios
+        if (totalLiquidity > 0) {
+            // Actualizar las recompensas acumuladas para cada token
+            accumulatedRewardsPerShare0 += MathLib.mulDiv(remainingFee0, REWARDS_PRECISION, totalLiquidity);
+            accumulatedRewardsPerShare1 += MathLib.mulDiv(remainingFee1, REWARDS_PRECISION, totalLiquidity);
+        }
+    }
+
+    function _updateAllUserRewardDebt() internal {
+        // TODO: Recoger los usuarios holders
+        for (uint256 i = 0; i < _pools.length(); i++) {
+            address user = _pools.at(i);
+            UserLiquidityInfo storage userInfo = userLiquidityInfo[user];
+
+            // Actualizamos su rewardDebt con los valores actuales TODO: revisar si esto está bien dividir entre el REWARDS_PRECISION
+            userInfo.rewardDebtUSDC = 
+                MathLib.mulDiv(userInfo.liquidity, accumulatedRewardsPerShare0, REWARDS_PRECISION); 
+        }
+    }
+
+    function _swapToUSDC(
+        address token,
+        uint256 feesToken
+    ) internal returns (uint256 feesUSDC) { // TODO: Literals
+        require(token != address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913) && feesToken > 0,
+            "NUP");
+
+        // Aprobar el router para gastar el token TODO: Literals
+        IERC20(token).approve(address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913), feesToken);
+
+        // Configurar los parámetros para ExactInputSingleParams TODO: Literals
+        IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter.ExactInputSingleParams({
+            tokenIn: address(token),
+            tokenOut: address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913),
+            fee: 500,
+            recipient: address(this),
+            amountIn: feesToken,
+            amountOutMinimum: 0,
+            sqrtPriceLimitX96: 0
+        });
+
+        // Ejecutar el swap TODO: Literals
+        feesUSDC = swapRouter.exactInputSingle(params);
+    }
+
+    /// @dev This function wraps the _applyFees to use only one token without 
+    /// breaking the current logic of Arrakis
+    function _applyUSDCFees(uint256 fee0, uint256 fee1) internal {
+        uint256 usdcFee;
+
+        // Solo meter a usdcFee el fee del token que no sea USDC TODO: Literals
+        if (address(token0) != address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)) {
+            usdcFee += _swapToUSDC(address(token0), fee0);
+        }
+        if (address(token1) != address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)) {
+            usdcFee += _swapToUSDC(address(token1), fee1);
+        }
+        _applyFees(usdcFee, 0);
+    }
+
+    function _withdraw(
+        IUniswapV3Pool pool_,
+        int24 lowerTick_,
+        int24 upperTick_,
+        uint128 liquidity_
+    ) internal returns (Withdraw memory withdraw) {
+        (withdraw.burn0, withdraw.burn1) = pool_.burn(
+            lowerTick_,
+            upperTick_,
+            liquidity_
+        );
+
+        (uint256 collect0, uint256 collect1) = _collectFees(
+            pool_,
+            lowerTick_,
+            upperTick_
+        );
+
+        withdraw.fee0 = collect0 - withdraw.burn0;
+        withdraw.fee1 = collect1 - withdraw.burn1;
     }
 
     // #endregion internal functions
