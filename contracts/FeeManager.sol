@@ -11,8 +11,6 @@ import {IV3SwapRouter} from "./univ3-0.8/IV3SwapRouter.sol";
 import {ISwapRouter02} from "./univ3-0.8/ISwapRouter02.sol";
 import {TransferHelper} from "./univ3-0.8/TransferHelper.sol";
 
-import "hardhat/console.sol";
-
 contract FeeManager is IFeeManager {
     using SafeERC20 for IERC20;
 
@@ -48,6 +46,20 @@ contract FeeManager is IFeeManager {
         rewardDebt[_user] = _amount;
     }
 
+    function depositFees(
+        address token0,
+        uint256 fees0,
+        address token1,
+        uint256 fees1
+    ) public onlyVault {
+        IERC20(token0).safeTransferFrom(address(vault), address(this), fees0);
+        IERC20(token1).safeTransferFrom(address(vault), address(this), fees1);
+        uint256 rewards = _convertFeesToUSDC(token0, fees0, token1, fees1);
+        accumulatedRewardsPerShare =
+            accumulatedRewardsPerShare +
+            FullMath.mulDiv(rewards, REWARDS_PRECISION, vault.totalSupply());
+    }
+
     function claimFees(address claimer) public {
         uint256 userBalance = vault.balanceOf(claimer);
         uint256 totalReward = FullMath.mulDiv(
@@ -76,11 +88,7 @@ contract FeeManager is IFeeManager {
             return 0;
         }
 
-        console.log("PreAPPROVE", token);
-
         TransferHelper.safeApprove(token, address(router), feesToken);
-
-        console.log("Preswap", token);
 
         IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
             .ExactInputSingleParams({
@@ -94,7 +102,6 @@ contract FeeManager is IFeeManager {
             });
 
         feesUSDC = router.exactInputSingle(params);
-        console.log("PostSwap", token);
     }
 
     /// @dev This function wraps the _applyFees to use only one token without
@@ -111,19 +118,5 @@ contract FeeManager is IFeeManager {
         if (address(token1) != address(usdc)) {
             usdcFee += _swapToUSDC(address(token1), fee1);
         }
-    }
-
-    function depositFees(
-        address token0,
-        uint256 fees0,
-        address token1,
-        uint256 fees1
-    ) public onlyVault {
-        IERC20(token0).safeTransferFrom(address(vault), address(this), fees0);
-        IERC20(token1).safeTransferFrom(address(vault), address(this), fees1);
-        uint256 rewards = _convertFeesToUSDC(token0, fees0, token1, fees1);
-        accumulatedRewardsPerShare =
-            accumulatedRewardsPerShare +
-            FullMath.mulDiv(rewards, REWARDS_PRECISION, vault.totalSupply());
     }
 }

@@ -445,6 +445,17 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         _withdrawManagerBalance();
     }
 
+    function collectFees() public {
+        require(address(feeManager) != address(0), "NFM"); // Not fee manager
+        if (totalSupply() == 0) {
+            return;
+        }
+        (uint256 fees0, uint256 fees1) = _collectFeesOnPools();
+        token0.safeApprove(address(feeManager), fees0);
+        token1.safeApprove(address(feeManager), fees1);
+        feeManager.depositFees(address(token0), fees0, address(token1), fees1);
+    }
+
     function _withdraw(
         IUniswapV3Pool pool_,
         int24 lowerTick_,
@@ -457,7 +468,7 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
             liquidity_
         );
 
-        (uint256 collect0, uint256 collect1) = _collectFees( // TODO: Conceptually it's a collect not colllect fees
+        (uint256 collect0, uint256 collect1) = _collectFees(
             pool_,
             lowerTick_,
             upperTick_
@@ -465,16 +476,5 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
 
         withdraw.fee0 = collect0 - withdraw.burn0;
         withdraw.fee1 = collect1 - withdraw.burn1;
-    }
-
-    function collectFees() public {
-        require(address(feeManager) != address(0), "NFM"); // Not fee manager
-        if (totalSupply() == 0) {
-            return;
-        }
-        (uint256 fees0, uint256 fees1) = _collectFeesOnPools();
-        token0.safeApprove(address(feeManager), fees0);
-        token1.safeApprove(address(feeManager), fees1);
-        feeManager.depositFees(address(token0), fees0, address(token1), fees1);
     }
 }
