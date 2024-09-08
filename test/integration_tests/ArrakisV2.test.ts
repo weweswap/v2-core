@@ -8,6 +8,7 @@ import {
   ISwapRouter,
   ArrakisV2Resolver,
   Position,
+  IFeeManager,
 } from "../../typechain";
 import { getAddresses, Addresses } from "../../src/addresses";
 import { Signer } from "ethers";
@@ -15,6 +16,50 @@ import { Contract } from "ethers";
 import { ManagerProxyMock } from "../../typechain/contracts/__mocks__/ManagerProxyMock";
 
 const { ethers, deployments } = hre;
+
+async function increaseBalance(address: string, amount: string) {
+  const balance = ethers.utils.hexlify(
+    ethers.utils.parseUnits(amount, "ether")
+  ); // Convierte a hexadecimal correctamente
+  await hre.network.provider.send("hardhat_setBalance", [address, balance]);
+}
+
+async function generateFees(
+  userAddr: string,
+  wMatic: Contract,
+  swapR: Contract,
+  addresses: any,
+  wEth: Contract,
+  usdc: Contract
+) {
+  await increaseBalance(userAddr, "2000"); // 10,000 ETH/MATIC
+  await wMatic.deposit({ value: ethers.utils.parseUnits("1999", 18) });
+  await wMatic.approve(swapR.address, ethers.utils.parseUnits("1999", 18));
+
+  await swapR.exactInputSingle({
+    tokenIn: addresses.WMATIC,
+    tokenOut: addresses.WETH,
+    fee: 500,
+    recipient: userAddr,
+    deadline: ethers.constants.MaxUint256,
+    amountIn: ethers.utils.parseUnits("1999", 18),
+    amountOutMinimum: ethers.constants.Zero,
+    sqrtPriceLimitX96: 0,
+  });
+
+  await wEth.approve(swapR.address, ethers.utils.parseEther("0.0019"));
+
+  await swapR.exactInputSingle({
+    tokenIn: wEth.address,
+    tokenOut: usdc.address,
+    fee: 500,
+    recipient: userAddr,
+    deadline: ethers.constants.MaxUint256,
+    amountIn: ethers.utils.parseEther("0.0019"),
+    amountOutMinimum: ethers.constants.Zero,
+    sqrtPriceLimitX96: 0,
+  });
+}
 
 describe("Arrakis V2 integration test!!!", async function () {
   this.timeout(0);
@@ -36,6 +81,7 @@ describe("Arrakis V2 integration test!!!", async function () {
   let addresses: Addresses;
   let lowerTick: number;
   let upperTick: number;
+  let feeManager: IFeeManager;
 
   let managerProxyMock: ManagerProxyMock;
 
@@ -182,10 +228,19 @@ describe("Arrakis V2 integration test!!!", async function () {
       user
     )) as ArrakisV2;
 
-    await managerProxyMock.setManagerFeeBPS(
+    const feeManagerFactory = await ethers.getContractFactory("FeeManager");
+    feeManager = (await feeManagerFactory.deploy(
       vaultV2.address,
-      await managerProxyMock.managerFeeBPS()
-    );
+      addresses.USDC
+    )) as IFeeManager;
+
+    vaultV2.connect(user).setFeeManager(feeManager.address);
+
+    // TODO: Reenable once we support manager fees
+    // await managerProxyMock.setManagerFeeBPS(
+    //   vaultV2.address,
+    //   await managerProxyMock.managerFeeBPS()
+    // );
 
     // #region get some USDC and WETH tokens from Uniswap V3.
 
@@ -491,34 +546,36 @@ describe("Arrakis V2 integration test!!!", async function () {
 
     // #region withdraw as manager.
 
-    const managerAddr = await vaultV2.manager();
+    // TODO: Reenable once we support manager fees
 
-    managerProxyMock.fundVaultBalance(vaultV2.address, {
-      value: ethers.utils.parseEther("1"),
-    });
+    // const managerAddr = await vaultV2.manager();
 
-    const managerT0B = await usdc.balanceOf(managerAddr);
-    const managerT1B = await wEth.balanceOf(managerAddr);
+    // managerProxyMock.fundVaultBalance(vaultV2.address, {
+    //   value: ethers.utils.parseEther("1"),
+    // });
 
-    await hre.network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [managerAddr],
-    });
+    // const managerT0B = await usdc.balanceOf(managerAddr);
+    // const managerT1B = await wEth.balanceOf(managerAddr);
 
-    const managerSigner = await ethers.getSigner(managerAddr);
+    // await hre.network.provider.request({
+    //   method: "hardhat_impersonateAccount",
+    //   params: [managerAddr],
+    // });
 
-    await vaultV2.connect(managerSigner).withdrawManagerBalance();
+    // const managerSigner = await ethers.getSigner(managerAddr);
 
-    await hre.network.provider.request({
-      method: "hardhat_stopImpersonatingAccount",
-      params: [managerAddr],
-    });
+    // await vaultV2.connect(managerSigner).withdrawManagerBalance();
 
-    const managerT0A = await usdc.balanceOf(managerAddr);
-    const managerT1A = await wEth.balanceOf(managerAddr);
+    // await hre.network.provider.request({
+    //   method: "hardhat_stopImpersonatingAccount",
+    //   params: [managerAddr],
+    // });
 
-    expect(managerT0A).to.be.gte(managerT0B);
-    expect(managerT1A).to.be.gt(managerT1B);
+    // const managerT0A = await usdc.balanceOf(managerAddr);
+    // const managerT1A = await wEth.balanceOf(managerAddr);
+
+    // expect(managerT0A).to.be.gte(managerT0B);
+    // expect(managerT1A).to.be.gt(managerT1B);
 
     // #region withdraw as manager.
   });
@@ -625,34 +682,35 @@ describe("Arrakis V2 integration test!!!", async function () {
 
     // #region withdraw as manager.
 
-    const managerAddr = await vaultV2.manager();
+    // TODO: Reenable once we support manager fees
+    // const managerAddr = await vaultV2.manager();
 
-    managerProxyMock.fundVaultBalance(vaultV2.address, {
-      value: ethers.utils.parseEther("1"),
-    });
+    // managerProxyMock.fundVaultBalance(vaultV2.address, {
+    //   value: ethers.utils.parseEther("1"),
+    // });
 
-    const managerT0B = await usdc.balanceOf(managerAddr);
-    const managerT1B = await wEth.balanceOf(managerAddr);
+    // const managerT0B = await usdc.balanceOf(managerAddr);
+    // const managerT1B = await wEth.balanceOf(managerAddr);
 
-    await hre.network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [managerAddr],
-    });
+    // await hre.network.provider.request({
+    //   method: "hardhat_impersonateAccount",
+    //   params: [managerAddr],
+    // });
 
-    const managerSigner = await ethers.getSigner(managerAddr);
+    // const managerSigner = await ethers.getSigner(managerAddr);
 
-    await vaultV2.connect(managerSigner).withdrawManagerBalance();
+    // await vaultV2.connect(managerSigner).withdrawManagerBalance();
 
-    await hre.network.provider.request({
-      method: "hardhat_stopImpersonatingAccount",
-      params: [managerAddr],
-    });
+    // await hre.network.provider.request({
+    //   method: "hardhat_stopImpersonatingAccount",
+    //   params: [managerAddr],
+    // });
 
-    const managerT0A = await usdc.balanceOf(managerAddr);
-    const managerT1A = await wEth.balanceOf(managerAddr);
+    // const managerT0A = await usdc.balanceOf(managerAddr);
+    // const managerT1A = await wEth.balanceOf(managerAddr);
 
-    expect(managerT0A).to.be.gte(managerT0B);
-    expect(managerT1A).to.be.gt(managerT1B);
+    // expect(managerT0A).to.be.gte(managerT0B);
+    // expect(managerT1A).to.be.gt(managerT1B);
 
     // #region withdraw as manager.
   });
@@ -708,7 +766,6 @@ describe("Arrakis V2 integration test!!!", async function () {
 
     await wMatic.deposit({ value: ethers.utils.parseUnits("1000", 18) });
     await wMatic.approve(swapR.address, ethers.utils.parseUnits("1000", 18));
-
     await swapR.exactInputSingle({
       tokenIn: addresses.WMATIC,
       tokenOut: addresses.WETH,
@@ -769,34 +826,262 @@ describe("Arrakis V2 integration test!!!", async function () {
 
     // #region withdraw as manager.
 
-    const managerAddr = await vaultV2.manager();
+    // TODO: Reenable once we support manager fees
+    // const managerAddr = await vaultV2.manager();
 
-    managerProxyMock.fundVaultBalance(vaultV2.address, {
-      value: ethers.utils.parseEther("1"),
+    // managerProxyMock.fundVaultBalance(vaultV2.address, {
+    //   value: ethers.utils.parseEther("1"),
+    // });
+
+    // const managerT0B = await usdc.balanceOf(managerAddr);
+    // const managerT1B = await wEth.balanceOf(managerAddr);
+
+    // await hre.network.provider.request({
+    //   method: "hardhat_impersonateAccount",
+    //   params: [managerAddr],
+    // });
+
+    // const managerSigner = await ethers.getSigner(managerAddr);
+
+    // await vaultV2.connect(managerSigner).withdrawManagerBalance();
+
+    // await hre.network.provider.request({
+    //   method: "hardhat_stopImpersonatingAccount",
+    //   params: [managerAddr],
+    // });
+
+    // const managerT0A = await usdc.balanceOf(managerAddr);
+    // const managerT1A = await wEth.balanceOf(managerAddr);
+
+    // expect(managerT0A).to.be.gte(managerT0B);
+    // expect(managerT1A).to.be.gt(managerT1B);
+
+    // #region withdraw as manager.
+  });
+  it.skip("#5: Collect fees", async () => {
+    // #region mint arrakis token by Lp.
+
+    await wEth.approve(vaultV2.address, ethers.constants.MaxUint256);
+    await usdc.approve(vaultV2.address, ethers.constants.MaxUint256);
+
+    // #endregion approve weth and usdc token to vault.
+
+    // #region user balance of weth and usdc.
+
+    let wethBalance = await wEth.balanceOf(userAddr);
+    let usdcBalance = await usdc.balanceOf(userAddr);
+
+    // #endregion user balance of weth and usdc.
+
+    // #region mint arrakis vault V2 token.
+
+    let result = await arrakisV2Resolver.getMintAmounts(
+      vaultV2.address,
+      usdcBalance,
+      wethBalance
+    );
+
+    await vaultV2.mint(result.mintAmount, userAddr);
+
+    const balance = await vaultV2.balanceOf(userAddr);
+
+    expect(balance).to.be.eq(result.mintAmount);
+
+    // #endregion mint arrakis token by Lp.
+    // #region rebalance to deposit user token into the uniswap v3 pool.
+
+    const rebalanceParams = await arrakisV2Resolver.standardRebalance(
+      [{ range: { lowerTick, upperTick, feeTier: 500 }, weight: 10000 }],
+      vaultV2.address
+    );
+
+    await managerProxyMock.rebalance(vaultV2.address, rebalanceParams);
+
+    // #region do a swap to generate fees.
+
+    const swapRouter = "0xE592427A0AEce92De3Edee1F18E0157C05861564";
+
+    const swapR: ISwapRouter = (await ethers.getContractAt(
+      "ISwapRouter",
+      swapRouter,
+      user
+    )) as ISwapRouter;
+
+    const wMaticBalance = await wMatic.balanceOf(await user.getAddress());
+    console.log("wMaticBalance", wMaticBalance.toString());
+    console.log("maticBalance", (await user.getBalance()).toString());
+
+    await wMatic.deposit({ value: ethers.utils.parseUnits("3000", 18) });
+    await wMatic.approve(swapR.address, ethers.utils.parseUnits("3000", 18));
+
+    await swapR.exactInputSingle({
+      tokenIn: addresses.WMATIC,
+      tokenOut: addresses.WETH,
+      fee: 500,
+      recipient: userAddr,
+      deadline: ethers.constants.MaxUint256,
+      amountIn: ethers.utils.parseUnits("3000", 18),
+      amountOutMinimum: ethers.constants.Zero,
+      sqrtPriceLimitX96: 0,
     });
 
-    const managerT0B = await usdc.balanceOf(managerAddr);
-    const managerT1B = await wEth.balanceOf(managerAddr);
+    await wEth.approve(swapR.address, ethers.utils.parseEther("0.003"));
 
-    await hre.network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [managerAddr],
+    await swapR.exactInputSingle({
+      tokenIn: wEth.address,
+      tokenOut: usdc.address,
+      fee: 500,
+      recipient: userAddr,
+      deadline: ethers.constants.MaxUint256,
+      amountIn: ethers.utils.parseEther("0.003"),
+      amountOutMinimum: ethers.constants.Zero,
+      sqrtPriceLimitX96: 0,
     });
 
-    const managerSigner = await ethers.getSigner(managerAddr);
+    // #endregion do a swap to generate fess.
 
-    await vaultV2.connect(managerSigner).withdrawManagerBalance();
+    // #endregion rebalance to deposit user token into the uniswap v3 pool.
 
-    await hre.network.provider.request({
-      method: "hardhat_stopImpersonatingAccount",
-      params: [managerAddr],
-    });
+    const user2Addr = await user2.getAddress();
 
-    const managerT0A = await usdc.balanceOf(managerAddr);
-    const managerT1A = await wEth.balanceOf(managerAddr);
+    wethBalance = await wEth.balanceOf(userAddr);
+    usdcBalance = await usdc.balanceOf(userAddr);
 
-    expect(managerT0A).to.be.gte(managerT0B);
-    expect(managerT1A).to.be.gt(managerT1B);
+    await wEth.transfer(user2Addr, wethBalance);
+    await usdc.transfer(user2Addr, usdcBalance);
+
+    await wEth.connect(user2).approve(vaultV2.address, wethBalance);
+    await usdc.connect(user2).approve(vaultV2.address, usdcBalance);
+
+    result = await arrakisV2Resolver.getMintAmounts(
+      vaultV2.address,
+      usdcBalance,
+      wethBalance
+    );
+
+    await vaultV2.connect(user2).mint(result.mintAmount, user2Addr);
+
+    const balance2 = await vaultV2.balanceOf(user2Addr);
+
+    expect(balance2).to.be.eq(result.mintAmount);
+
+    // #region do a swap to generate fees.
+
+    // await increaseBalance(await user.getAddress(), "2000"); // 10,000 ETH/MATIC
+    // await wMatic.deposit({ value: ethers.utils.parseUnits("10000", 18) });
+    // await wMatic.approve(swapR.address, ethers.utils.parseUnits("10000", 18));
+
+    // await swapR.exactInputSingle({
+    //   tokenIn: addresses.WMATIC,
+    //   tokenOut: addresses.WETH,
+    //   fee: 500,
+    //   recipient: userAddr,
+    //   deadline: ethers.constants.MaxUint256,
+    //   amountIn: ethers.utils.parseUnits("10000", 18),
+    //   amountOutMinimum: ethers.constants.Zero,
+    //   sqrtPriceLimitX96: 0,
+    // });
+
+    // await wEth.approve(swapR.address, ethers.utils.parseEther("0.01"));
+
+    // await swapR.exactInputSingle({
+    //   tokenIn: wEth.address,
+    //   tokenOut: usdc.address,
+    //   fee: 500,
+    //   recipient: userAddr,
+    //   deadline: ethers.constants.MaxUint256,
+    //   amountIn: ethers.utils.parseEther("0.01"),
+    //   amountOutMinimum: ethers.constants.Zero,
+    //   sqrtPriceLimitX96: 0,
+    // });
+
+    for (let i = 0; i < 1; i++) {
+      console.log(`Ejecutando llamada ${i + 1}`);
+      await generateFees(userAddr, wMatic, swapR, addresses, wEth, usdc);
+    }
+
+    await vaultV2.collectFees();
+
+    // Claim all fees from fee manager
+
+    // const feeManagerUser1: IFeeManager = (await ethers.getContractAt(
+    //   "FeeManager",
+    //   feeManager.address,
+    //   userAddr
+    // )) as IFeeManager;
+
+    // await feeManagerUser1.claimFees(userAddr);
+
+    // Claim all fees from fee manager
+    const feeManagerUser2: IFeeManager = (await ethers.getContractAt(
+      "FeeManager",
+      feeManager.address,
+      user2Addr
+    )) as IFeeManager;
+
+    await feeManagerUser2.claimFees(user2Addr);
+
+    // #endregion do a swap to generate fess.
+
+    // #endregion burn token to get back token to user.
+
+    // #region rebalance to remove the range.
+
+    // await managerProxyMock.rebalance(
+    //   vaultV2.address,
+    //   await arrakisV2Resolver.standardRebalance([], vaultV2.address)
+    // );
+
+    // const userBalanceLpToken = await vaultV2.balanceOf(userAddr);
+    // console.log("userBalanceLpToken", userBalanceLpToken.toString());
+    // console.log("vault address", vaultV2.address);
+
+    // // Claim all fees from fee manager
+    // const feeManagerUser1: IFeeManager = (await ethers.getContractAt(
+    //   "FeeManager",
+    //   feeManager.address,
+    //   userAddr
+    // )) as IFeeManager;
+
+    // await feeManagerUser1.claimFees(userAddr);
+
+    // console.log("Fee manager", feeManager.address);
+    // const feeManagerBalance = await usdc.balanceOf(feeManager.address);
+    // console.log("feeManagerBalance", feeManagerBalance.toString());
+
+    // #endregion rebalance to remove the range.
+
+    // #region withdraw as manager.
+
+    // TODO: Reenable once we support manager fees
+    // const managerAddr = await vaultV2.manager();
+
+    // managerProxyMock.fundVaultBalance(vaultV2.address, {
+    //   value: ethers.utils.parseEther("1"),
+    // });
+
+    // const managerT0B = await usdc.balanceOf(managerAddr);
+    // const managerT1B = await wEth.balanceOf(managerAddr);
+
+    // await hre.network.provider.request({
+    //   method: "hardhat_impersonateAccount",
+    //   params: [managerAddr],
+    // });
+
+    // const managerSigner = await ethers.getSigner(managerAddr);
+
+    // await vaultV2.connect(managerSigner).withdrawManagerBalance();
+
+    // await hre.network.provider.request({
+    //   method: "hardhat_stopImpersonatingAccount",
+    //   params: [managerAddr],
+    // });
+
+    // const managerT0A = await usdc.balanceOf(managerAddr);
+    // const managerT1A = await wEth.balanceOf(managerAddr);
+
+    // expect(managerT0A).to.be.gte(managerT0B);
+    // expect(managerT1A).to.be.gt(managerT1B);
 
     // #region withdraw as manager.
   });
