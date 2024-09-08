@@ -28,10 +28,17 @@ contract FeeManager is IFeeManager {
         _;
     }
 
-    constructor(address vault_, address usdc_, address uniSwapRouter_) {
+    constructor(
+        address vault_,
+        address usdc_,
+        address uniSwapRouter_
+    ) {
         require(vault_ != address(0), "FeeManager: Invalid vault_ address");
         require(usdc_ != address(0), "FeeManager: Invalid usdc_ address");
-        require(uniSwapRouter_ != address(0), "FeeManager: uniSwapRouter_ address");
+        require(
+            uniSwapRouter_ != address(0),
+            "FeeManager: uniSwapRouter_ address"
+        );
         vault = IERC20(vault_);
         usdc = IERC20(usdc_);
         router = ISwapRouter02(uniSwapRouter_);
@@ -69,11 +76,11 @@ contract FeeManager is IFeeManager {
             return 0;
         }
 
-        console.log('PreAPPROVE', token);
+        console.log("PreAPPROVE", token);
 
         TransferHelper.safeApprove(token, address(router), feesToken);
 
-        console.log('Preswap', token);
+        console.log("Preswap", token);
 
         IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
             .ExactInputSingleParams({
@@ -87,7 +94,7 @@ contract FeeManager is IFeeManager {
             });
 
         feesUSDC = router.exactInputSingle(params);
-        console.log('PostSwap', token);
+        console.log("PostSwap", token);
     }
 
     /// @dev This function wraps the _applyFees to use only one token without
