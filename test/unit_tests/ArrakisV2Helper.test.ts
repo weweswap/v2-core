@@ -132,6 +132,14 @@ describe("ArrakisV2Helper functions unit test", function () {
         user
       )) as ArrakisV2;
 
+      const feeManagerFactory = await ethers.getContractFactory("FeeManager");
+      const feeManager = await feeManagerFactory.deploy(
+        arrakisV2.address,
+        addresses.USDC
+      );
+
+      arrakisV2.connect(user).setFeeManager(feeManager.address);
+
       swapRouter = (await ethers.getContractAt(
         "ISwapRouter",
         addresses.SwapRouter,

@@ -17,7 +17,7 @@ import {
     Rebalance
 } from "./abstract/ArrakisV2Storage.sol";
 import {FullMath} from "@arrakisfi/v3-lib-0.8/contracts/LiquidityAmounts.sol";
-import {Withdraw, UnderlyingPayload, UserLiquidityInfo} from "./structs/SArrakisV2.sol";
+import {Withdraw, UnderlyingPayload} from "./structs/SArrakisV2.sol";
 import {Position} from "./libraries/Position.sol";
 import {Pool} from "./libraries/Pool.sol";
 import {Underlying as UnderlyingHelper} from "./libraries/Underlying.sol";
@@ -66,7 +66,10 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         uint256 ts = totalSupply();
         bool isTotalSupplyGtZero = ts > 0;
 
-        claimFees();
+        console.log('Sender', msg.sender);
+
+        collectFees();
+        feeManager.claimFees(msg.sender);
 
         // console.log('totalSupply', ts);
 
@@ -122,9 +125,9 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
 
         _mint(receiver_, mintAmount_);
 
-        rewardDebt[msg.sender] = FullMath.mulDiv(balanceOf(msg.sender), accumulatedRewardsPerShare, REWARDS_PRECISION);
+        feeManager.setRewardDebt(msg.sender,FullMath.mulDiv(balanceOf(msg.sender), feeManager.accumulatedRewardsPerShare(), feeManager.REWARDS_PRECISION()));
 
-        console.log('amount0', amount0, amount1);
+        // console.log('amount0', amount0, amount1);
 
         // transfer amounts owed to contract
         if (amount0 > 0) {
@@ -182,11 +185,12 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         uint256 ts = totalSupply();
         require(ts > 0, "TS");
 
-        claimFees();
+        collectFees();
+        feeManager.claimFees(msg.sender);
 
         _burn(msg.sender, burnAmount_);
 
-        rewardDebt[msg.sender] = FullMath.mulDiv(balanceOf(msg.sender), accumulatedRewardsPerShare, REWARDS_PRECISION);
+        feeManager.setRewardDebt(msg.sender,FullMath.mulDiv(balanceOf(msg.sender), feeManager.accumulatedRewardsPerShare(), feeManager.REWARDS_PRECISION()));
 
         Withdraw memory total;
         for (uint256 i; i < _ranges.length; i++) {
@@ -460,27 +464,15 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         withdraw.fee1 = collect1 - withdraw.burn1;
     }
 
-    function claimFees() public {
-        collectFees();
-        uint256 rewardsToHarvest = FullMath.mulDiv(balanceOf(msg.sender), accumulatedRewardsPerShare, REWARDS_PRECISION) - rewardDebt[msg.sender];
-        // console.log("rewardsToHarvest", rewardsToHarvest);
-        if (rewardsToHarvest == 0) {
-            rewardDebt[msg.sender] = FullMath.mulDiv(balanceOf(msg.sender), accumulatedRewardsPerShare, REWARDS_PRECISION);
-            return;
-        }
-
-        // TODO: Add event
-        rewardDebt[msg.sender] = FullMath.mulDiv(balanceOf(msg.sender), accumulatedRewardsPerShare, REWARDS_PRECISION);
-
-        USDC.safeTransfer(msg.sender, rewardsToHarvest);
-    }
-
     function collectFees() public {
+        require(address(feeManager) != address(0), "NFM"); // Not fee manager
         if (totalSupply() == 0) {
             return;
         }
         (uint256 fees0, uint256 fees1) = _collectFeesOnPools();
-        uint256 rewards = _convertFeesToUSDC(fees0, fees1);
-        accumulatedRewardsPerShare = FullMath.mulDiv(rewards, REWARDS_PRECISION, totalSupply());
+        token0.safeApprove(address(feeManager), fees0);
+        token1.safeApprove(address(feeManager), fees1);
+        feeManager.depositFees(address(token0), fees0, address(token1), fees1);
     }
+    
 }

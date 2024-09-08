@@ -8,6 +8,7 @@ import {
   ISwapRouter,
   ArrakisV2Resolver,
   Position,
+  IFeeManager,
 } from "../../typechain";
 import { getAddresses, Addresses } from "../../src/addresses";
 import { Signer } from "ethers";
@@ -36,6 +37,7 @@ describe("Arrakis V2 integration test!!!", async function () {
   let addresses: Addresses;
   let lowerTick: number;
   let upperTick: number;
+  let feeManager: IFeeManager;
 
   let managerProxyMock: ManagerProxyMock;
 
@@ -181,6 +183,14 @@ describe("Arrakis V2 integration test!!!", async function () {
       result?.vault,
       user
     )) as ArrakisV2;
+
+    const feeManagerFactory = await ethers.getContractFactory("FeeManager");
+    feeManager = (await feeManagerFactory.deploy(
+      vaultV2.address,
+      addresses.USDC
+    )) as IFeeManager;
+
+    vaultV2.connect(user).setFeeManager(feeManager.address);
 
     // TODO: Reenable once we support manager fees
     // await managerProxyMock.setManagerFeeBPS(
@@ -782,38 +792,48 @@ describe("Arrakis V2 integration test!!!", async function () {
       await arrakisV2Resolver.standardRebalance([], vaultV2.address)
     );
 
+    console.log("Fee manager", feeManager.address);
+    const feeManagerBalance = await usdc.balanceOf(feeManager.address);
+    const accumulatedRewardsPerShare = await feeManager.accumulatedRewardsPerShare();
+    console.log("feeManagerBalance", feeManagerBalance.toString());
+    console.log(
+      "accumulatedRewardsPerShare",
+      accumulatedRewardsPerShare.toString()
+    );
+
     // #endregion rebalance to remove the range.
 
     // #region withdraw as manager.
 
-    const managerAddr = await vaultV2.manager();
+    // TODO: Reenable once we support manager fees
+    // const managerAddr = await vaultV2.manager();
 
-    managerProxyMock.fundVaultBalance(vaultV2.address, {
-      value: ethers.utils.parseEther("1"),
-    });
+    // managerProxyMock.fundVaultBalance(vaultV2.address, {
+    //   value: ethers.utils.parseEther("1"),
+    // });
 
-    const managerT0B = await usdc.balanceOf(managerAddr);
-    const managerT1B = await wEth.balanceOf(managerAddr);
+    // const managerT0B = await usdc.balanceOf(managerAddr);
+    // const managerT1B = await wEth.balanceOf(managerAddr);
 
-    await hre.network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [managerAddr],
-    });
+    // await hre.network.provider.request({
+    //   method: "hardhat_impersonateAccount",
+    //   params: [managerAddr],
+    // });
 
-    const managerSigner = await ethers.getSigner(managerAddr);
+    // const managerSigner = await ethers.getSigner(managerAddr);
 
-    await vaultV2.connect(managerSigner).withdrawManagerBalance();
+    // await vaultV2.connect(managerSigner).withdrawManagerBalance();
 
-    await hre.network.provider.request({
-      method: "hardhat_stopImpersonatingAccount",
-      params: [managerAddr],
-    });
+    // await hre.network.provider.request({
+    //   method: "hardhat_stopImpersonatingAccount",
+    //   params: [managerAddr],
+    // });
 
-    const managerT0A = await usdc.balanceOf(managerAddr);
-    const managerT1A = await wEth.balanceOf(managerAddr);
+    // const managerT0A = await usdc.balanceOf(managerAddr);
+    // const managerT1A = await wEth.balanceOf(managerAddr);
 
-    expect(managerT0A).to.be.gte(managerT0B);
-    expect(managerT1A).to.be.gt(managerT1B);
+    // expect(managerT0A).to.be.gte(managerT0B);
+    // expect(managerT1A).to.be.gt(managerT1B);
 
     // #region withdraw as manager.
   });
