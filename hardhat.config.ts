@@ -26,18 +26,11 @@ const config: HardhatUserConfig = {
     deployer: {
       default: 0,
     },
-    owner: {
+    arrakisMultiSig: {
       default: 1,
-      polygon: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
-      mainnet: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
-      optimism: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
-      arbitrum: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
-      goerli: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
-      sepolia: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
-      base: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
-      base_goerli: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae", // eslint-disable-line @typescript-eslint/naming-convention
-      binance: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
-      gnosis: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
+    },
+    owner: {
+      default: 2,
     },
   },
 
