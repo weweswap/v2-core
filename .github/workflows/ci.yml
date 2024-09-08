@@ -42,5 +42,7 @@ jobs:
         run: yarn lint
 
       - name: Run Solidity Test
+        env:
+          ALCHEMY_ID: ${{ secrets.ALCHEMY_ID }}
         run: yarn test
 
