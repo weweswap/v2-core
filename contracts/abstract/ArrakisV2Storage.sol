@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.13;
 
+import {FullMath} from "@arrakisfi/v3-lib-0.8/contracts/LiquidityAmounts.sol";
 import {
     IUniswapV3Factory
 } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
@@ -35,7 +36,6 @@ import {
     Withdraw
 } from "../structs/SArrakisV2.sol";
 import {hundredPercent} from "../constants/CArrakisV2.sol";
-import {MathLib} from "../libraries/MathLib.sol"; 
 
 /// @title ArrakisV2Storage base contract containing all ArrakisV2 storage variables.
 // solhint-disable-next-line max-states-count
@@ -46,10 +46,11 @@ abstract contract ArrakisV2Storage is
 {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
-    using MathLib for uint256;
     
     ISwapRouter02 public immutable swapRouter = ISwapRouter02(0x2626664c2603336E57B271c5C0b26F421741e481);
+    IERC20 public immutable USDC = IERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
     IUniswapV3Factory public immutable factory;
+
 
     IERC20 public token0;
     IERC20 public token1;
@@ -69,10 +70,8 @@ abstract contract ArrakisV2Storage is
 
     // #region UserLiquidityInfo data
 
-    uint256 public totalLiquidity; // TODO: Liquidez total de los holders
-    uint256 public accumulatedRewardsPerShare0; // Recompensas acumuladas para token0
-    uint256 public accumulatedRewardsPerShare1; // Recompensas acumuladas para token1
-    mapping(address => UserLiquidityInfo) public userLiquidityInfo;
+    uint256 public accumulatedRewardsPerShare;
+    mapping(address => uint256) public rewardDebt;
     uint256 public constant REWARDS_PRECISION = 1e12; // Precisión para evitar errores de redondeo
 
     // #endregion UserLiquidityInfo data
@@ -131,6 +130,11 @@ abstract contract ArrakisV2Storage is
 
     modifier onlyManager() {
         require(manager == msg.sender, "NM");
+        _;
+    }
+
+    modifier featureDisabled() {
+        revert("This feature is disabled in the current version");
         _;
     }
 
@@ -248,6 +252,7 @@ abstract contract ArrakisV2Storage is
         external
         onlyManager
         nonReentrant
+        featureDisabled
     {
         require(managerFeeBPS_ <= 10000, "MFO");
         _collectFeesOnPools();
@@ -351,9 +356,7 @@ abstract contract ArrakisV2Storage is
         }
     }
 
-    function _collectFeesOnPools() internal {
-        uint256 fees0;
-        uint256 fees1;
+    function _collectFeesOnPools() internal returns (uint256 fees0, uint256 fees1) {
         for (uint256 i; i < _ranges.length; i++) {
             Range memory range = _ranges[i];
             IUniswapV3Pool pool = IUniswapV3Pool(
@@ -408,53 +411,25 @@ abstract contract ArrakisV2Storage is
 
     function _applyFees(uint256 fee0_, uint256 fee1_) internal {
         uint16 mManagerFeeBPS = managerFeeBPS;
-
-        // Calcular la cantidad que corresponde al manager y añadir a lo que ya tiene
-        uint256 managerFee0 = MathLib.mulDiv(fee0_, mManagerFeeBPS, hundredPercent);
-        uint256 managerFee1 = MathLib.mulDiv(fee1_, mManagerFeeBPS, hundredPercent);
-
-        // Añadir a lo que ya tiene
-        managerBalance0 += managerFee0;
-        managerBalance1 += managerFee1;
-
-        // Quitamos la parte del manager de los fees que se van a distribuir
-        uint256 remainingFee0 = fee0_ - managerFee0;
-        uint256 remainingFee1 = fee1_ - managerFee1;
-
-        // Si hay liquidez en la pool, distribuir los fees entre los usuarios
-        if (totalLiquidity > 0) {
-            // Actualizar las recompensas acumuladas para cada token
-            accumulatedRewardsPerShare0 += MathLib.mulDiv(remainingFee0, REWARDS_PRECISION, totalLiquidity);
-            accumulatedRewardsPerShare1 += MathLib.mulDiv(remainingFee1, REWARDS_PRECISION, totalLiquidity);
-        }
-    }
-
-    function _updateAllUserRewardDebt() internal {
-        // TODO: Recoger los usuarios holders
-        for (uint256 i = 0; i < _pools.length(); i++) {
-            address user = _pools.at(i);
-            UserLiquidityInfo storage userInfo = userLiquidityInfo[user];
-
-            // Actualizamos su rewardDebt con los valores actuales TODO: revisar si esto está bien dividir entre el REWARDS_PRECISION
-            userInfo.rewardDebtUSDC = 
-                MathLib.mulDiv(userInfo.liquidity, accumulatedRewardsPerShare0, REWARDS_PRECISION); 
-        }
+        managerBalance0 += (fee0_ * mManagerFeeBPS) / hundredPercent;
+        managerBalance1 += (fee1_ * mManagerFeeBPS) / hundredPercent;
     }
 
     function _swapToUSDC(
         address token,
         uint256 feesToken
-    ) internal returns (uint256 feesUSDC) { // TODO: Literals
-        require(token != address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913) && feesToken > 0,
-            "NUP");
+    ) internal returns (uint256 feesUSDC) {
+        if (feesToken == 0) {
+            return 0;
+        }
 
-        // Aprobar el router para gastar el token TODO: Literals
-        IERC20(token).approve(address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913), feesToken);
+        // Aprobar el router para gastar el token
+        IERC20(token).approve(address(USDC), feesToken);
 
-        // Configurar los parámetros para ExactInputSingleParams TODO: Literals
+        // Configurar los parámetros para ExactInputSingleParams
         IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter.ExactInputSingleParams({
             tokenIn: address(token),
-            tokenOut: address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913),
+            tokenOut: address(USDC),
             fee: 500,
             recipient: address(this),
             amountIn: feesToken,
@@ -462,23 +437,20 @@ abstract contract ArrakisV2Storage is
             sqrtPriceLimitX96: 0
         });
 
-        // Ejecutar el swap TODO: Literals
+        // Ejecutar el swap
         feesUSDC = swapRouter.exactInputSingle(params);
     }
 
     /// @dev This function wraps the _applyFees to use only one token without 
     /// breaking the current logic of Arrakis
-    function _applyUSDCFees(uint256 fee0, uint256 fee1) internal {
-        uint256 usdcFee;
-
-        // Solo meter a usdcFee el fee del token que no sea USDC TODO: Literals
-        if (address(token0) != address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)) {
+    function _convertFeesToUSDC(uint256 fee0, uint256 fee1) internal returns (uint256 usdcFee) {
+        // Solo meter a usdcFee el fee del token que no sea USDC
+        if (address(token0) != address(USDC)) {
             usdcFee += _swapToUSDC(address(token0), fee0);
         }
-        if (address(token1) != address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)) {
+        if (address(token1) != address(USDC)) {
             usdcFee += _swapToUSDC(address(token1), fee1);
         }
-        _applyFees(usdcFee, 0);
     }
 
     function _withdraw(

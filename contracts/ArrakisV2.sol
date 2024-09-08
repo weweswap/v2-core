@@ -22,6 +22,7 @@ import {Position} from "./libraries/Position.sol";
 import {Pool} from "./libraries/Pool.sol";
 import {Underlying as UnderlyingHelper} from "./libraries/Underlying.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "hardhat/console.sol";
 
 /// @title ArrakisV2 LP vault version 2
 /// @notice Smart contract managing liquidity providing strategy for a given token pair
@@ -63,10 +64,11 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         address me = address(this);
         uint256 ts = totalSupply();
         bool isTotalSupplyGtZero = ts > 0;
+        console.log('Mint has started!!!');
 
-        lmCollectFees();
+        claimFees();
 
-        totalLiquidity += mintAmount_;
+        console.log('Fees has benn claimed!!!');
 
         if (isTotalSupplyGtZero) {
             (amount0, amount1) = UnderlyingHelper.totalUnderlyingForMint(
@@ -119,6 +121,8 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         }
 
         _mint(receiver_, mintAmount_);
+
+        rewardDebt[msg.sender] = FullMath.mulDiv(balanceOf(msg.sender), accumulatedRewardsPerShare, REWARDS_PRECISION);
 
         // transfer amounts owed to contract
         if (amount0 > 0) {
@@ -174,11 +178,11 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         uint256 ts = totalSupply();
         require(ts > 0, "TS");
 
-        lmCollectFees();
-
-        totalLiquidity -= burnAmount_;
+        claimFees();
 
         _burn(msg.sender, burnAmount_);
+
+        rewardDebt[msg.sender] = FullMath.mulDiv(balanceOf(msg.sender), accumulatedRewardsPerShare, REWARDS_PRECISION);
 
         Withdraw memory total;
         for (uint256 i; i < _ranges.length; i++) {
@@ -424,40 +428,33 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
 
     /// @notice will send manager fees to manager
     /// @dev anyone can call this function
-    function withdrawManagerBalance() external nonReentrant {
+    function withdrawManagerBalance() external nonReentrant featureDisabled {
         _withdrawManagerBalance();
     }
 
-    function claimFees() external {
-        // Tenemos que actualizar el rewardDebt llamando al _applyUSDCFees antes?
-        UserLiquidityInfo storage userInfo = userLiquidityInfo[msg.sender];
+    function claimFees() public {
+        collectFees();
+        console.log('Fees collected');
+        uint256 rewardsToHarvest = FullMath.mulDiv(balanceOf(msg.sender), accumulatedRewardsPerShare, REWARDS_PRECISION) - rewardDebt[msg.sender];
+    
+        if (rewardsToHarvest == 0) {
+            rewardDebt[msg.sender] = FullMath.mulDiv(balanceOf(msg.sender), accumulatedRewardsPerShare, REWARDS_PRECISION);
+            return;
+        }
 
-        require(userInfo.rewardDebtUSDC > 0, "NRA");
-        
-        // TODO: check if token0 o token1 es USDC
-        token0.safeTransfer(msg.sender, userInfo.rewardDebtUSDC);
+        // TODO: Add event
+        rewardDebt[msg.sender] = FullMath.mulDiv(balanceOf(msg.sender), accumulatedRewardsPerShare, REWARDS_PRECISION);
 
-        userInfo.rewardDebtUSDC = 0;
+        USDC.safeTransfer(msg.sender, rewardsToHarvest);
     }
 
-    function lmCollectFees() public {
-        Withdraw memory total;
-        for (uint256 i; i < _ranges.length; i++) {
-            // Para cada rango que tengamos en la pool WEWE/USDC
-            Range memory range = _ranges[i];
-            IUniswapV3Pool pool = IUniswapV3Pool(
-                factory.getPool(address(token0), address(token1), range.feeTier)
-            );
-
-            (uint256 collect0, uint256 collect1) = _collectFees(
-                pool,
-                range.lowerTick,
-                range.upperTick
-            );
-            total.fee0 += collect0;
-            total.fee1 += collect1;
+    function collectFees() public {
+        if (totalSupply() == 0) {
+            return;
         }
-        _applyUSDCFees(total.fee0, total.fee1);
-        _updateAllUserRewardDebt();
+        (uint256 fees0, uint256 fees1) = _collectFeesOnPools();
+        uint256 rewards = _convertFeesToUSDC(fees0, fees1);
+        console.log('Fees converted _convertFeesToUSDC', totalSupply());
+        accumulatedRewardsPerShare = FullMath.mulDiv(rewards, REWARDS_PRECISION, totalSupply());
     }
 }

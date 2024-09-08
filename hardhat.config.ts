@@ -112,7 +112,7 @@ const config: HardhatUserConfig = {
       {
         version: "0.8.13",
         settings: {
-          optimizer: { enabled: true, runs: 50 }, // TODO: Increase this number because it is not optimal for gas consumption.
+          optimizer: { enabled: true, runs: 0 }, // TODO: Increase this number because it is not optimal for gas consumption.
         },
       },
     ],
