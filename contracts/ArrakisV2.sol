@@ -66,10 +66,10 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         uint256 ts = totalSupply();
         bool isTotalSupplyGtZero = ts > 0;
 
-        console.log('Sender', msg.sender);
+        console.log("Sender", msg.sender);
 
         collectFees();
-        feeManager.claimFees(msg.sender);
+        feeManager.claimFees(receiver_);
 
         // console.log('totalSupply', ts);
 
@@ -124,10 +124,15 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         }
 
         _mint(receiver_, mintAmount_);
-
-        feeManager.setRewardDebt(msg.sender,FullMath.mulDiv(balanceOf(msg.sender), feeManager.accumulatedRewardsPerShare(), feeManager.REWARDS_PRECISION()));
-
-        // console.log('amount0', amount0, amount1);
+        // FullMath.mulDiv(userBalance, accumulatedRewardsPerShare, REWARDS_PRECISION)
+        feeManager.setRewardDebt(
+            receiver_,
+            FullMath.mulDiv(
+                balanceOf(receiver_),
+                feeManager.accumulatedRewardsPerShare(),
+                feeManager.REWARDS_PRECISION()
+            )
+        );
 
         // transfer amounts owed to contract
         if (amount0 > 0) {
@@ -190,7 +195,14 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
 
         _burn(msg.sender, burnAmount_);
 
-        feeManager.setRewardDebt(msg.sender,FullMath.mulDiv(balanceOf(msg.sender), feeManager.accumulatedRewardsPerShare(), feeManager.REWARDS_PRECISION()));
+        feeManager.setRewardDebt(
+            msg.sender,
+            FullMath.mulDiv(
+                balanceOf(msg.sender),
+                feeManager.accumulatedRewardsPerShare(),
+                feeManager.REWARDS_PRECISION()
+            )
+        );
 
         Withdraw memory total;
         for (uint256 i; i < _ranges.length; i++) {
@@ -474,5 +486,4 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         token1.safeApprove(address(feeManager), fees1);
         feeManager.depositFees(address(token0), fees0, address(token1), fees1);
     }
-    
 }

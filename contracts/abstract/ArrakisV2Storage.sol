@@ -44,7 +44,7 @@ abstract contract ArrakisV2Storage is
 {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
-    
+
     IUniswapV3Factory public immutable factory;
 
     IERC20 public token0;
@@ -232,7 +232,11 @@ abstract contract ArrakisV2Storage is
     /// @param feeManager_ fee manager address.
     /// @dev only callable by owner.
     /// TODO: User feeManager interface
-    function setFeeManager(address feeManager_) external onlyOwner nonReentrant {
+    function setFeeManager(address feeManager_)
+        external
+        onlyOwner
+        nonReentrant
+    {
         feeManager = IFeeManager(feeManager_); // TODO: Add an event
     }
 
@@ -357,7 +361,10 @@ abstract contract ArrakisV2Storage is
         }
     }
 
-    function _collectFeesOnPools() internal returns (uint256 fees0, uint256 fees1) {
+    function _collectFeesOnPools()
+        internal
+        returns (uint256 fees0, uint256 fees1)
+    {
         for (uint256 i; i < _ranges.length; i++) {
             Range memory range = _ranges[i];
             IUniswapV3Pool pool = IUniswapV3Pool(
