@@ -9,10 +9,6 @@ import {
     IUniswapV3Pool
 } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {
-    IV3SwapRouter
-} from "../univ3-0.8/IV3SwapRouter.sol";
-import {ISwapRouter02} from "../univ3-0.8/ISwapRouter02.sol";
-import {
     IERC20,
     SafeERC20
 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -32,11 +28,10 @@ import {
     Range,
     Rebalance,
     InitializePayload,
-    UserLiquidityInfo,
     Withdraw
 } from "../structs/SArrakisV2.sol";
 import {hundredPercent} from "../constants/CArrakisV2.sol";
-import {TransferHelper} from "../univ3-0.8/TransferHelper.sol";
+import {IFeeManager} from "../interfaces/IFeeManager.sol";
 
 // import "hardhat/console.sol";
 
@@ -49,11 +44,8 @@ abstract contract ArrakisV2Storage is
 {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
-    
-    ISwapRouter02 public immutable swapRouter = ISwapRouter02(0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45);
-    IERC20 public immutable USDC = IERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
-    IUniswapV3Factory public immutable factory;
 
+    IUniswapV3Factory public immutable factory;
 
     IERC20 public token0;
     IERC20 public token1;
@@ -71,13 +63,11 @@ abstract contract ArrakisV2Storage is
 
     // #endregion manager data
 
-    // #region UserLiquidityInfo data
+    // #fee manager data
 
-    uint256 public accumulatedRewardsPerShare;
-    mapping(address => uint256) public rewardDebt;
-    uint256 public constant REWARDS_PRECISION = 1e12; // Precisión para evitar errores de redondeo
+    IFeeManager public feeManager;
 
-    // #endregion UserLiquidityInfo data
+    // #fee manager data
 
     Range[] internal _ranges;
 
@@ -238,6 +228,18 @@ abstract contract ArrakisV2Storage is
         emit LogBlacklistRouters(routers_);
     }
 
+    /// @notice set fee manager
+    /// @param feeManager_ fee manager address.
+    /// @dev only callable by owner.
+    /// TODO: User feeManager interface
+    function setFeeManager(address feeManager_)
+        external
+        onlyOwner
+        nonReentrant
+    {
+        feeManager = IFeeManager(feeManager_); // TODO: Add an event
+    }
+
     /// @notice set manager
     /// @param manager_ manager address.
     /// @dev only callable by owner.
@@ -359,7 +361,10 @@ abstract contract ArrakisV2Storage is
         }
     }
 
-    function _collectFeesOnPools() internal returns (uint256 fees0, uint256 fees1) {
+    function _collectFeesOnPools()
+        internal
+        returns (uint256 fees0, uint256 fees1)
+    {
         for (uint256 i; i < _ranges.length; i++) {
             Range memory range = _ranges[i];
             IUniswapV3Pool pool = IUniswapV3Pool(
@@ -416,48 +421,6 @@ abstract contract ArrakisV2Storage is
         uint16 mManagerFeeBPS = managerFeeBPS;
         managerBalance0 += (fee0_ * mManagerFeeBPS) / hundredPercent;
         managerBalance1 += (fee1_ * mManagerFeeBPS) / hundredPercent;
-    }
-
-    function _swapToUSDC(
-        address token,
-        uint256 feesToken
-    ) internal returns (uint256 feesUSDC) {
-        if (feesToken == 0) {
-            return 0;
-        }
-
-        // Aprobar el router para gastar el token
-        TransferHelper.safeApprove(token, address(swapRouter), feesToken);
-
-        // Configurar los parámetros para ExactInputSingleParams
-        IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter.ExactInputSingleParams({
-            tokenIn: address(token),
-            tokenOut: address(USDC),
-            fee: 3000,
-            recipient: address(this),
-            amountIn: feesToken,
-            amountOutMinimum: 0,
-            sqrtPriceLimitX96: 0
-        });
-
-        // console.log('Swapping fees to USDC', feesToken);
-
-        // Ejecutar el swap
-        feesUSDC = swapRouter.exactInputSingle(params);
-
-        // console.log('Swapped to USDC', feesUSDC);
-    }
-
-    /// @dev This function wraps the _applyFees to use only one token without 
-    /// breaking the current logic of Arrakis
-    function _convertFeesToUSDC(uint256 fee0, uint256 fee1) internal returns (uint256 usdcFee) {
-        // Solo meter a usdcFee el fee del token que no sea USDC
-        if (address(token0) != address(USDC)) {
-            usdcFee += _swapToUSDC(address(token0), fee0);
-        }
-        if (address(token1) != address(USDC)) {
-            usdcFee += _swapToUSDC(address(token1), fee1);
-        }
     }
     // #endregion internal functions
 }

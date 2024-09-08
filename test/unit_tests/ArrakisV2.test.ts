@@ -34,6 +34,14 @@ describe("ArrakisV2 functions unit test", function () {
     managerAddr = await manager.getAddress();
 
     arrakisV2 = await ethers.getContract("ArrakisV2", arrakisTreasury);
+
+    const feeManagerFactory = await ethers.getContractFactory("FeeManager");
+    const feeManager = await feeManagerFactory.deploy(
+      arrakisV2.address,
+      addresses.USDC
+    );
+
+    arrakisV2.connect(manager).setFeeManager(feeManager.address);
   });
 
   it("#0: Initialize", async () => {
