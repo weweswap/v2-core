@@ -36,6 +36,9 @@ import {
     Withdraw
 } from "../structs/SArrakisV2.sol";
 import {hundredPercent} from "../constants/CArrakisV2.sol";
+import {TransferHelper} from "../univ3-0.8/TransferHelper.sol";
+
+// import "hardhat/console.sol";
 
 /// @title ArrakisV2Storage base contract containing all ArrakisV2 storage variables.
 // solhint-disable-next-line max-states-count
@@ -47,7 +50,7 @@ abstract contract ArrakisV2Storage is
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     
-    ISwapRouter02 public immutable swapRouter = ISwapRouter02(0x2626664c2603336E57B271c5C0b26F421741e481);
+    ISwapRouter02 public immutable swapRouter = ISwapRouter02(0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45);
     IERC20 public immutable USDC = IERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
     IUniswapV3Factory public immutable factory;
 
@@ -239,7 +242,7 @@ abstract contract ArrakisV2Storage is
     /// @param manager_ manager address.
     /// @dev only callable by owner.
     function setManager(address manager_) external onlyOwner nonReentrant {
-        _collectFeesOnPools();
+        // _collectFeesOnPools(); TODO: Re-enable when manager fees will be sipported
         _withdrawManagerBalance();
         manager = manager_;
         emit LogSetManager(manager_);
@@ -424,21 +427,25 @@ abstract contract ArrakisV2Storage is
         }
 
         // Aprobar el router para gastar el token
-        IERC20(token).approve(address(USDC), feesToken);
+        TransferHelper.safeApprove(token, address(swapRouter), feesToken);
 
         // Configurar los parámetros para ExactInputSingleParams
         IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter.ExactInputSingleParams({
             tokenIn: address(token),
             tokenOut: address(USDC),
-            fee: 500,
+            fee: 3000,
             recipient: address(this),
             amountIn: feesToken,
             amountOutMinimum: 0,
             sqrtPriceLimitX96: 0
         });
 
+        // console.log('Swapping fees to USDC', feesToken);
+
         // Ejecutar el swap
         feesUSDC = swapRouter.exactInputSingle(params);
+
+        // console.log('Swapped to USDC', feesUSDC);
     }
 
     /// @dev This function wraps the _applyFees to use only one token without 
@@ -452,28 +459,5 @@ abstract contract ArrakisV2Storage is
             usdcFee += _swapToUSDC(address(token1), fee1);
         }
     }
-
-    function _withdraw(
-        IUniswapV3Pool pool_,
-        int24 lowerTick_,
-        int24 upperTick_,
-        uint128 liquidity_
-    ) internal returns (Withdraw memory withdraw) {
-        (withdraw.burn0, withdraw.burn1) = pool_.burn(
-            lowerTick_,
-            upperTick_,
-            liquidity_
-        );
-
-        (uint256 collect0, uint256 collect1) = _collectFees(
-            pool_,
-            lowerTick_,
-            upperTick_
-        );
-
-        withdraw.fee0 = collect0 - withdraw.burn0;
-        withdraw.fee1 = collect1 - withdraw.burn1;
-    }
-
     // #endregion internal functions
 }

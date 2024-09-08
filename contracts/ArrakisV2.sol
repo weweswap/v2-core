@@ -23,7 +23,7 @@ import {Pool} from "./libraries/Pool.sol";
 import {Underlying as UnderlyingHelper} from "./libraries/Underlying.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 /// @title ArrakisV2 LP vault version 2
 /// @notice Smart contract managing liquidity providing strategy for a given token pair
@@ -67,6 +67,8 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         bool isTotalSupplyGtZero = ts > 0;
 
         claimFees();
+
+        // console.log('totalSupply', ts);
 
         if (isTotalSupplyGtZero) {
             (amount0, amount1) = UnderlyingHelper.totalUnderlyingForMint(
@@ -122,6 +124,8 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
 
         rewardDebt[msg.sender] = FullMath.mulDiv(balanceOf(msg.sender), accumulatedRewardsPerShare, REWARDS_PRECISION);
 
+        console.log('amount0', amount0, amount1);
+
         // transfer amounts owed to contract
         if (amount0 > 0) {
             token0.safeTransferFrom(msg.sender, me, amount0);
@@ -129,6 +133,8 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         if (amount1 > 0) {
             token1.safeTransferFrom(msg.sender, me, amount1);
         }
+
+        // console.log('amount0', amount0);
 
         if (isTotalSupplyGtZero) {
             for (uint256 i; i < _ranges.length; i++) {
@@ -262,6 +268,8 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         IUniswapV3Factory mFactory = factory;
         IERC20 mToken0 = token0;
         IERC20 mToken1 = token1;
+
+        collectFees();
 
         {
             Withdraw memory aggregator;
@@ -430,10 +438,32 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         _withdrawManagerBalance();
     }
 
+    function _withdraw(
+        IUniswapV3Pool pool_,
+        int24 lowerTick_,
+        int24 upperTick_,
+        uint128 liquidity_
+    ) internal returns (Withdraw memory withdraw) {
+        (withdraw.burn0, withdraw.burn1) = pool_.burn(
+            lowerTick_,
+            upperTick_,
+            liquidity_
+        );
+
+        (uint256 collect0, uint256 collect1) = _collectFees( // TODO: Conceptually it's a collect not colllect fees
+            pool_,
+            lowerTick_,
+            upperTick_
+        );
+
+        withdraw.fee0 = collect0 - withdraw.burn0;
+        withdraw.fee1 = collect1 - withdraw.burn1;
+    }
+
     function claimFees() public {
         collectFees();
         uint256 rewardsToHarvest = FullMath.mulDiv(balanceOf(msg.sender), accumulatedRewardsPerShare, REWARDS_PRECISION) - rewardDebt[msg.sender];
-    
+        // console.log("rewardsToHarvest", rewardsToHarvest);
         if (rewardsToHarvest == 0) {
             rewardDebt[msg.sender] = FullMath.mulDiv(balanceOf(msg.sender), accumulatedRewardsPerShare, REWARDS_PRECISION);
             return;
