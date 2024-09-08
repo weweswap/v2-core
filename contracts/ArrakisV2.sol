@@ -23,8 +23,6 @@ import {Pool} from "./libraries/Pool.sol";
 import {Underlying as UnderlyingHelper} from "./libraries/Underlying.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-import "hardhat/console.sol";
-
 /// @title ArrakisV2 LP vault version 2
 /// @notice Smart contract managing liquidity providing strategy for a given token pair
 /// using multiple Uniswap V3 LP positions on multiple fee tiers.
@@ -66,12 +64,8 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         uint256 ts = totalSupply();
         bool isTotalSupplyGtZero = ts > 0;
 
-        console.log("Sender", msg.sender);
-
         collectFees();
         feeManager.claimFees(receiver_);
-
-        // console.log('totalSupply', ts);
 
         if (isTotalSupplyGtZero) {
             (amount0, amount1) = UnderlyingHelper.totalUnderlyingForMint(
@@ -124,7 +118,6 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         }
 
         _mint(receiver_, mintAmount_);
-        // FullMath.mulDiv(userBalance, accumulatedRewardsPerShare, REWARDS_PRECISION)
         feeManager.setRewardDebt(
             receiver_,
             FullMath.mulDiv(
@@ -141,8 +134,6 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         if (amount1 > 0) {
             token1.safeTransferFrom(msg.sender, me, amount1);
         }
-
-        // console.log('amount0', amount0);
 
         if (isTotalSupplyGtZero) {
             for (uint256 i; i < _ranges.length; i++) {

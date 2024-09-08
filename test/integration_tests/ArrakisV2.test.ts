@@ -231,7 +231,8 @@ describe("Arrakis V2 integration test!!!", async function () {
     const feeManagerFactory = await ethers.getContractFactory("FeeManager");
     feeManager = (await feeManagerFactory.deploy(
       vaultV2.address,
-      addresses.USDC
+      addresses.USDC,
+      addresses.SwapRouter02
     )) as IFeeManager;
 
     vaultV2.connect(user).setFeeManager(feeManager.address);

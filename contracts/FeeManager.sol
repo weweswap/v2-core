@@ -11,30 +11,32 @@ import {IV3SwapRouter} from "./univ3-0.8/IV3SwapRouter.sol";
 import {ISwapRouter02} from "./univ3-0.8/ISwapRouter02.sol";
 import {TransferHelper} from "./univ3-0.8/TransferHelper.sol";
 
+import "hardhat/console.sol";
+
 contract FeeManager is IFeeManager {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable vault;
     IERC20 public immutable usdc;
+    ISwapRouter02 public immutable router;
     uint256 public accumulatedRewardsPerShare;
     mapping(address => uint256) public rewardDebt;
     uint256 public constant REWARDS_PRECISION = 1e18;
-    ISwapRouter02 public immutable swapRouter =
-        ISwapRouter02(0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45);
-    IERC20 public immutable USDC =
-        IERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
 
     modifier onlyVault() {
         require(address(vault) == msg.sender, "Only vault can call");
         _;
     }
 
-    constructor(address vault_, address usdc_) {
+    constructor(address vault_, address usdc_, address uniSwapRouter_) {
+        require(vault_ != address(0), "FeeManager: Invalid vault_ address");
+        require(usdc_ != address(0), "FeeManager: Invalid usdc_ address");
+        require(uniSwapRouter_ != address(0), "FeeManager: uniSwapRouter_ address");
         vault = IERC20(vault_);
         usdc = IERC20(usdc_);
+        router = ISwapRouter02(uniSwapRouter_);
     }
 
-    // Setter para rewardDebt de un usuario
     function setRewardDebt(address _user, uint256 _amount) external onlyVault {
         rewardDebt[_user] = _amount;
     }
@@ -67,14 +69,16 @@ contract FeeManager is IFeeManager {
             return 0;
         }
 
-        // Aprobar el router para gastar el token
-        TransferHelper.safeApprove(token, address(swapRouter), feesToken);
+        console.log('PreAPPROVE', token);
 
-        // Configurar los parámetros para ExactInputSingleParams
+        TransferHelper.safeApprove(token, address(router), feesToken);
+
+        console.log('Preswap', token);
+
         IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
             .ExactInputSingleParams({
                 tokenIn: address(token),
-                tokenOut: address(USDC),
+                tokenOut: address(usdc),
                 fee: 3000,
                 recipient: address(this),
                 amountIn: feesToken,
@@ -82,12 +86,8 @@ contract FeeManager is IFeeManager {
                 sqrtPriceLimitX96: 0
             });
 
-        // console.log('Swapping fees to USDC', feesToken);
-
-        // Ejecutar el swap
-        feesUSDC = swapRouter.exactInputSingle(params);
-
-        // console.log('Swapped to USDC', feesUSDC);
+        feesUSDC = router.exactInputSingle(params);
+        console.log('PostSwap', token);
     }
 
     /// @dev This function wraps the _applyFees to use only one token without
@@ -98,11 +98,10 @@ contract FeeManager is IFeeManager {
         address token1,
         uint256 fee1
     ) internal returns (uint256 usdcFee) {
-        // Solo meter a usdcFee el fee del token que no sea USDC
-        if (address(token0) != address(USDC)) {
+        if (address(token0) != address(usdc)) {
             usdcFee += _swapToUSDC(address(token0), fee0);
         }
-        if (address(token1) != address(USDC)) {
+        if (address(token1) != address(usdc)) {
             usdcFee += _swapToUSDC(address(token1), fee1);
         }
     }

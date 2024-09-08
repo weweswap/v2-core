@@ -231,13 +231,13 @@ abstract contract ArrakisV2Storage is
     /// @notice set fee manager
     /// @param feeManager_ fee manager address.
     /// @dev only callable by owner.
-    /// TODO: User feeManager interface
     function setFeeManager(address feeManager_)
         external
         onlyOwner
         nonReentrant
     {
-        feeManager = IFeeManager(feeManager_); // TODO: Add an event
+        feeManager = IFeeManager(feeManager_);
+        // TODO: Add an event
     }
 
     /// @notice set manager
