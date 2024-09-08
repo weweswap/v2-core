@@ -22,7 +22,8 @@ import {Position} from "./libraries/Position.sol";
 import {Pool} from "./libraries/Pool.sol";
 import {Underlying as UnderlyingHelper} from "./libraries/Underlying.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "hardhat/console.sol";
+
+// import "hardhat/console.sol";
 
 /// @title ArrakisV2 LP vault version 2
 /// @notice Smart contract managing liquidity providing strategy for a given token pair
@@ -64,11 +65,8 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         address me = address(this);
         uint256 ts = totalSupply();
         bool isTotalSupplyGtZero = ts > 0;
-        console.log('Mint has started!!!');
 
         claimFees();
-
-        console.log('Fees has benn claimed!!!');
 
         if (isTotalSupplyGtZero) {
             (amount0, amount1) = UnderlyingHelper.totalUnderlyingForMint(
@@ -434,7 +432,6 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
 
     function claimFees() public {
         collectFees();
-        console.log('Fees collected');
         uint256 rewardsToHarvest = FullMath.mulDiv(balanceOf(msg.sender), accumulatedRewardsPerShare, REWARDS_PRECISION) - rewardDebt[msg.sender];
     
         if (rewardsToHarvest == 0) {
@@ -454,7 +451,6 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         }
         (uint256 fees0, uint256 fees1) = _collectFeesOnPools();
         uint256 rewards = _convertFeesToUSDC(fees0, fees1);
-        console.log('Fees converted _convertFeesToUSDC', totalSupply());
         accumulatedRewardsPerShare = FullMath.mulDiv(rewards, REWARDS_PRECISION, totalSupply());
     }
 }
