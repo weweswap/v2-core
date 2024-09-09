@@ -56,10 +56,18 @@ contract FeeManager is IFeeManager {
         uint256 fees1
     ) public onlyVault {
         if (fees0 > 0) {
-            IERC20(token0).safeTransferFrom(address(vault), address(this), fees0);
+            IERC20(token0).safeTransferFrom(
+                address(vault),
+                address(this),
+                fees0
+            );
         }
         if (fees1 > 0) {
-            IERC20(token1).safeTransferFrom(address(vault), address(this), fees1);
+            IERC20(token1).safeTransferFrom(
+                address(vault),
+                address(this),
+                fees1
+            );
         }
         uint256 rewards = _convertFeesToUSDC(token0, fees0, token1, fees1);
         accumulatedRewardsPerShare =
@@ -121,9 +129,13 @@ contract FeeManager is IFeeManager {
     ) internal returns (uint256 usdcFee) {
         if (address(token0) != address(usdc)) {
             usdcFee += _swapToUSDC(address(token0), fee0);
+        } else {
+            usdcFee += fee0;
         }
         if (address(token1) != address(usdc)) {
             usdcFee += _swapToUSDC(address(token1), fee1);
+        } else {
+            usdcFee += fee1;
         }
     }
 }

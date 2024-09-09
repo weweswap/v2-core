@@ -4,7 +4,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { getAddresses, Addresses } from "../src/addresses";
 import { sleep } from "../src/utils";
 
-const vaultAddress = "0x3884F9eE9dfA0550797f58049a448FA379C04C71"; // TODO: Automatize deploy vault
+const vaultAddress = "0xb13688c877268e32cc4584B6e06A3984d016dBB2"; // TODO: Automatize deploy vault
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   if (
@@ -49,6 +49,6 @@ func.skip = async (hre: HardhatRuntimeEnvironment) => {
     hre.network.name === "base_goerli" ||
     hre.network.name === "sepolia" ||
     hre.network.name === "gnosis";
-  return shouldSkip ? true : false;
+  return false;
 };
 func.tags = ["FeeManager"];
