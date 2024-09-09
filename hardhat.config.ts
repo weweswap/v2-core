@@ -30,7 +30,8 @@ const config: HardhatUserConfig = {
       default: 1,
     },
     owner: {
-      default: 2,
+      default: 1,
+      base: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
     },
   },
 
@@ -112,7 +113,7 @@ const config: HardhatUserConfig = {
       {
         version: "0.8.13",
         settings: {
-          optimizer: { enabled: true, runs: 10 }, // TODO: Increase this number because it is not optimal for gas consumption.
+          optimizer: { enabled: true, runs: 50 }, // TODO: Increase this number because it is not optimal for gas consumption.
         },
       },
     ],
