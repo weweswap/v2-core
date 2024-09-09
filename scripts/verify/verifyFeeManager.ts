@@ -6,11 +6,12 @@ const vaultAddress = "0x3884F9eE9dfA0550797f58049a448FA379C04C71"; // TODO: Auto
 async function main() {
   const addresses: Addresses = getAddresses(hre.network.name);
   await hre.run("verify:verify", {
-    address: (await hre.ethers.getContract("FeeManager")).address,
+    address: "0x4B44AC40aEFB44a4AB1bA3a7420C7A819315F6D0",
     constructorArguments: [
       vaultAddress,
       addresses.USDC,
       addresses.SwapRouter02,
+      10000,
     ],
   });
 }

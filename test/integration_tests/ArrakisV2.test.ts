@@ -232,7 +232,8 @@ describe("Arrakis V2 integration test!!!", async function () {
     feeManager = (await feeManagerFactory.deploy(
       vaultV2.address,
       addresses.USDC,
-      addresses.SwapRouter02
+      addresses.SwapRouter02,
+      3000
     )) as IFeeManager;
 
     vaultV2.connect(user).setFeeManager(feeManager.address);

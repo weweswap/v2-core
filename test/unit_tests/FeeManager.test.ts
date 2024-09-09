@@ -14,7 +14,7 @@ import {
 import { getAddresses, Addresses } from "../../src/addresses";
 const { ethers, deployments } = hre;
 
-describe("ArrakisV2Helper functions unit test", function () {
+describe("FeeManager unit test", function () {
   this.timeout(0);
 
   let user: Signer;

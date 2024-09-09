@@ -30,7 +30,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { deployer } = await getNamedAccounts();
   await deploy("FeeManager", {
     from: deployer,
-    args: [vaultAddress, addresses.USDC, addresses.SwapRouter02],
+    args: [vaultAddress, addresses.USDC, addresses.SwapRouter02, 10000],
     log: hre.network.name != "hardhat" ? true : false,
   });
 };
@@ -49,6 +49,6 @@ func.skip = async (hre: HardhatRuntimeEnvironment) => {
     hre.network.name === "base_goerli" ||
     hre.network.name === "sepolia" ||
     hre.network.name === "gnosis";
-  return false;
+  return shouldSkip ? true : false;
 };
 func.tags = ["FeeManager"];

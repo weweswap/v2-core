@@ -20,6 +20,7 @@ contract FeeManager is IFeeManager {
     uint256 public accumulatedRewardsPerShare;
     mapping(address => uint256) public rewardDebt;
     uint256 public constant REWARDS_PRECISION = 1e18;
+    uint24 public immutable feeTier;
 
     modifier onlyVault() {
         require(address(vault) == msg.sender, "Only vault can call");
@@ -29,7 +30,8 @@ contract FeeManager is IFeeManager {
     constructor(
         address vault_,
         address usdc_,
-        address uniSwapRouter_
+        address uniSwapRouter_,
+        uint24 feeTier_
     ) {
         require(vault_ != address(0), "FeeManager: Invalid vault_ address");
         require(usdc_ != address(0), "FeeManager: Invalid usdc_ address");
@@ -37,6 +39,7 @@ contract FeeManager is IFeeManager {
             uniSwapRouter_ != address(0),
             "FeeManager: uniSwapRouter_ address"
         );
+        feeTier = feeTier_;
         vault = IERC20(vault_);
         usdc = IERC20(usdc_);
         router = ISwapRouter02(uniSwapRouter_);
@@ -52,8 +55,12 @@ contract FeeManager is IFeeManager {
         address token1,
         uint256 fees1
     ) public onlyVault {
-        IERC20(token0).safeTransferFrom(address(vault), address(this), fees0);
-        IERC20(token1).safeTransferFrom(address(vault), address(this), fees1);
+        if (fees0 > 0) {
+            IERC20(token0).safeTransferFrom(address(vault), address(this), fees0);
+        }
+        if (fees1 > 0) {
+            IERC20(token1).safeTransferFrom(address(vault), address(this), fees1);
+        }
         uint256 rewards = _convertFeesToUSDC(token0, fees0, token1, fees1);
         accumulatedRewardsPerShare =
             accumulatedRewardsPerShare +
@@ -94,7 +101,7 @@ contract FeeManager is IFeeManager {
             .ExactInputSingleParams({
                 tokenIn: address(token),
                 tokenOut: address(usdc),
-                fee: 3000,
+                fee: feeTier,
                 recipient: address(this),
                 amountIn: feesToken,
                 amountOutMinimum: 0,

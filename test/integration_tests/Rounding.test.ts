@@ -208,7 +208,8 @@ describe("Rounding integration test", async function () {
     const feeManager = await feeManagerFactory.deploy(
       vaultV2.address,
       addresses.USDC,
-      addresses.SwapRouter02
+      addresses.SwapRouter02,
+      3000
     );
 
     vaultV2.connect(user).setFeeManager(feeManager.address);
