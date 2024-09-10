@@ -4,28 +4,31 @@ pragma solidity 0.8.13;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 interface IFeeManager {
-    // Getter para la dirección del vault
+    // Getter for the vault address
     function vault() external view returns (IERC20);
 
-    // Getter para la dirección del USDC
+    // Getter for the USDC address
     function usdc() external view returns (IERC20);
 
-    // Getter para accumulatedRewardsPerShare
+    // Getter for accumulatedRewardsPerShare
     function accumulatedRewardsPerShare() external view returns (uint256);
 
-    // Getter para rewardDebt de un usuario
+    // Getter for a user's rewardDebt
     function rewardDebt(address _user) external view returns (uint256);
 
-    // Getter para REWARDS_PRECISION
+    // Getter for REWARDS_PRECISION
     function REWARDS_PRECISION() external view returns (uint256);
 
-    // Setter para rewardDebt de un usuario (solo puede ser llamado por el vault)
+    // Function to emergency withdraw all the USDC of the contract (Only Owner)
+    function withdrawEmergency() external;
+
+    // Setter for a user's rewardDebt (can only be called by the vault)
     function setRewardDebt(address _user, uint256 _amount) external;
 
-    // Función para que los usuarios reclamen las fees
+    // Function for users to claim their fees
     function claimFees(address claimer) external;
 
-    // Función para depositar fees, solo puede ser llamada por el vault
+    // Function to deposit fees, can only be called by the vault
     function depositFees(
         address token0,
         uint256 fees0,

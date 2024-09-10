@@ -10,8 +10,9 @@ import {
 import {IV3SwapRouter} from "./univ3-0.8/IV3SwapRouter.sol";
 import {ISwapRouter02} from "./univ3-0.8/ISwapRouter02.sol";
 import {TransferHelper} from "./univ3-0.8/TransferHelper.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract FeeManager is IFeeManager {
+contract FeeManager is IFeeManager, Ownable {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable vault;
@@ -43,6 +44,16 @@ contract FeeManager is IFeeManager {
         vault = IERC20(vault_);
         usdc = IERC20(usdc_);
         router = ISwapRouter02(uniSwapRouter_);
+
+        transferOwnership(msg.sender);
+    }
+
+    /// @dev Emergency withdraw only called by owner
+    function withdrawEmergency() external onlyOwner {
+        uint256 balance = usdc.balanceOf(address(this));
+        require(balance > 0, "FeeManager: No USDC to withdraw");
+
+        usdc.safeTransfer(owner(), balance);
     }
 
     function setRewardDebt(address _user, uint256 _amount) external onlyVault {
