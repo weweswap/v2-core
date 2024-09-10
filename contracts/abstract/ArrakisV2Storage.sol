@@ -33,8 +33,6 @@ import {
 import {hundredPercent} from "../constants/CArrakisV2.sol";
 import {IFeeManager} from "../interfaces/IFeeManager.sol";
 
-// import "hardhat/console.sol";
-
 /// @title ArrakisV2Storage base contract containing all ArrakisV2 storage variables.
 // solhint-disable-next-line max-states-count
 abstract contract ArrakisV2Storage is
