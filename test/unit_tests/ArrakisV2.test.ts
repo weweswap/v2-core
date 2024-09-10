@@ -39,7 +39,8 @@ describe("ArrakisV2 functions unit test", function () {
     const feeManager = await feeManagerFactory.deploy(
       arrakisV2.address,
       addresses.USDC,
-      addresses.SwapRouter02
+      addresses.SwapRouter02,
+      3000
     );
 
     arrakisV2.connect(manager).setFeeManager(feeManager.address);

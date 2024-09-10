@@ -451,8 +451,12 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
             return;
         }
         (uint256 fees0, uint256 fees1) = _collectFeesOnPools();
-        token0.safeApprove(address(feeManager), fees0);
-        token1.safeApprove(address(feeManager), fees1);
+        if (fees0 > 0) {
+            token0.safeApprove(address(feeManager), fees0);
+        }
+        if (fees1 > 0) {
+            token1.safeApprove(address(feeManager), fees1);
+        }
         feeManager.depositFees(address(token0), fees0, address(token1), fees1);
     }
 

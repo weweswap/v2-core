@@ -30,7 +30,7 @@ const config: HardhatUserConfig = {
       default: 1,
     },
     owner: {
-      default: 1,
+      default: 2,
       base: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
     },
   },
@@ -44,7 +44,7 @@ const config: HardhatUserConfig = {
         network: "base",
         chainId: 8453,
         urls: {
-          apiURL: "https://api.basescan.org/api",
+          apiURL: "https://base.blockscout.com/api",
           browserURL: "https://basescan.org",
         },
       },
