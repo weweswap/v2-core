@@ -49,6 +49,6 @@ func.skip = async (hre: HardhatRuntimeEnvironment) => {
     hre.network.name === "base_goerli" ||
     hre.network.name === "sepolia" ||
     hre.network.name === "gnosis";
-  return false;
+  return shouldSkip ? true : false;
 };
 func.tags = ["FeeManager"];
