@@ -63,6 +63,10 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         address me = address(this);
         uint256 ts = totalSupply();
         bool isTotalSupplyGtZero = ts > 0;
+
+        collectFees();
+        feeManager.claimFees(receiver_);
+
         if (isTotalSupplyGtZero) {
             (amount0, amount1) = UnderlyingHelper.totalUnderlyingForMint(
                 UnderlyingPayload({
@@ -114,6 +118,14 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         }
 
         _mint(receiver_, mintAmount_);
+        feeManager.setRewardDebt(
+            receiver_,
+            FullMath.mulDiv(
+                balanceOf(receiver_),
+                feeManager.accumulatedRewardsPerShare(),
+                feeManager.REWARDS_PRECISION()
+            )
+        );
 
         // transfer amounts owed to contract
         if (amount0 > 0) {
@@ -169,7 +181,19 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         uint256 ts = totalSupply();
         require(ts > 0, "TS");
 
+        collectFees();
+        feeManager.claimFees(msg.sender);
+
         _burn(msg.sender, burnAmount_);
+
+        feeManager.setRewardDebt(
+            msg.sender,
+            FullMath.mulDiv(
+                balanceOf(msg.sender),
+                feeManager.accumulatedRewardsPerShare(),
+                feeManager.REWARDS_PRECISION()
+            )
+        );
 
         Withdraw memory total;
         for (uint256 i; i < _ranges.length; i++) {
@@ -251,6 +275,8 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         IUniswapV3Factory mFactory = factory;
         IERC20 mToken0 = token0;
         IERC20 mToken1 = token1;
+
+        collectFees();
 
         {
             Withdraw memory aggregator;
@@ -415,8 +441,23 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
 
     /// @notice will send manager fees to manager
     /// @dev anyone can call this function
-    function withdrawManagerBalance() external nonReentrant {
+    function withdrawManagerBalance() external nonReentrant featureDisabled {
         _withdrawManagerBalance();
+    }
+
+    function collectFees() public {
+        require(address(feeManager) != address(0), "NFM"); // Not fee manager
+        if (totalSupply() == 0) {
+            return;
+        }
+        (uint256 fees0, uint256 fees1) = _collectFeesOnPools();
+        if (fees0 > 0) {
+            token0.safeApprove(address(feeManager), fees0);
+        }
+        if (fees1 > 0) {
+            token1.safeApprove(address(feeManager), fees1);
+        }
+        feeManager.depositFees(address(token0), fees0, address(token1), fees1);
     }
 
     function _withdraw(

@@ -203,6 +203,16 @@ describe("Rounding integration test", async function () {
       result?.vault,
       user
     )) as ArrakisV2;
+
+    const feeManagerFactory = await ethers.getContractFactory("FeeManager");
+    const feeManager = await feeManagerFactory.deploy(
+      vaultV2.address,
+      addresses.USDC,
+      addresses.SwapRouter02,
+      3000
+    );
+
+    vaultV2.connect(user).setFeeManager(feeManager.address);
   });
   it("0: should rebalance exact amount with no leftover", async () => {
     await wEth.approve(vaultV2.address, ethers.constants.MaxUint256);

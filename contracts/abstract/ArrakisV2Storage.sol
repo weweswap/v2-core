@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.13;
 
+import {FullMath} from "@arrakisfi/v3-lib-0.8/contracts/LiquidityAmounts.sol";
 import {
     IUniswapV3Factory
 } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
@@ -23,8 +24,14 @@ import {
 import {
     EnumerableSet
 } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import {Range, Rebalance, InitializePayload} from "../structs/SArrakisV2.sol";
+import {
+    Range,
+    Rebalance,
+    InitializePayload,
+    Withdraw
+} from "../structs/SArrakisV2.sol";
 import {hundredPercent} from "../constants/CArrakisV2.sol";
+import {IFeeManager} from "../interfaces/IFeeManager.sol";
 
 /// @title ArrakisV2Storage base contract containing all ArrakisV2 storage variables.
 // solhint-disable-next-line max-states-count
@@ -53,6 +60,12 @@ abstract contract ArrakisV2Storage is
     address public restrictedMint;
 
     // #endregion manager data
+
+    // #fee manager data
+
+    IFeeManager public feeManager;
+
+    // #fee manager data
 
     Range[] internal _ranges;
 
@@ -108,6 +121,11 @@ abstract contract ArrakisV2Storage is
 
     modifier onlyManager() {
         require(manager == msg.sender, "NM");
+        _;
+    }
+
+    modifier featureDisabled() {
+        revert("This feature is disabled in the current version");
         _;
     }
 
@@ -208,11 +226,23 @@ abstract contract ArrakisV2Storage is
         emit LogBlacklistRouters(routers_);
     }
 
+    /// @notice set fee manager
+    /// @param feeManager_ fee manager address.
+    /// @dev only callable by owner.
+    function setFeeManager(address feeManager_)
+        external
+        onlyOwner
+        nonReentrant
+    {
+        feeManager = IFeeManager(feeManager_);
+        // TODO: Add an event
+    }
+
     /// @notice set manager
     /// @param manager_ manager address.
     /// @dev only callable by owner.
     function setManager(address manager_) external onlyOwner nonReentrant {
-        _collectFeesOnPools();
+        // _collectFeesOnPools(); TODO: Re-enable when manager fees will be sipported
         _withdrawManagerBalance();
         manager = manager_;
         emit LogSetManager(manager_);
@@ -225,6 +255,7 @@ abstract contract ArrakisV2Storage is
         external
         onlyManager
         nonReentrant
+        featureDisabled
     {
         require(managerFeeBPS_ <= 10000, "MFO");
         _collectFeesOnPools();
@@ -328,9 +359,10 @@ abstract contract ArrakisV2Storage is
         }
     }
 
-    function _collectFeesOnPools() internal {
-        uint256 fees0;
-        uint256 fees1;
+    function _collectFeesOnPools()
+        internal
+        returns (uint256 fees0, uint256 fees1)
+    {
         for (uint256 i; i < _ranges.length; i++) {
             Range memory range = _ranges[i];
             IUniswapV3Pool pool = IUniswapV3Pool(
@@ -388,6 +420,5 @@ abstract contract ArrakisV2Storage is
         managerBalance0 += (fee0_ * mManagerFeeBPS) / hundredPercent;
         managerBalance1 += (fee1_ * mManagerFeeBPS) / hundredPercent;
     }
-
     // #endregion internal functions
 }

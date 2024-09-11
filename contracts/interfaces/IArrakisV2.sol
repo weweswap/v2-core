@@ -95,6 +95,8 @@ interface IArrakisV2 is IERC20 {
 
     function renounceOwnership() external;
 
+    function claimFees() external;
+
     // #endregion state modifiying functions.
 
     function factory() external view returns (IUniswapV3Factory);

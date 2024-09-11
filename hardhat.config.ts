@@ -31,6 +31,7 @@ const config: HardhatUserConfig = {
     },
     owner: {
       default: 2,
+      base: "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
     },
   },
 
@@ -43,7 +44,7 @@ const config: HardhatUserConfig = {
         network: "base",
         chainId: 8453,
         urls: {
-          apiURL: "https://api.basescan.org/api",
+          apiURL: "https://base.blockscout.com/api",
           browserURL: "https://basescan.org",
         },
       },
@@ -112,7 +113,7 @@ const config: HardhatUserConfig = {
       {
         version: "0.8.13",
         settings: {
-          optimizer: { enabled: true, runs: 833 },
+          optimizer: { enabled: true, runs: 50 }, // TODO: Increase this number because it is not optimal for gas consumption.
         },
       },
     ],
