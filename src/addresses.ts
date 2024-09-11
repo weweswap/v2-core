@@ -3,6 +3,7 @@ export interface Addresses {
   UniswapV3Factory: string;
   SwapRouter: string;
   SwapRouter02: string;
+  QuoterV2: string;
   WETH: string;
   WMATIC: string;
   USDC: string;
@@ -20,6 +21,7 @@ export const getAddresses = (network: string): Addresses => {
         UniswapV3Factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
         SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
         SwapRouter02: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
+        QuoterV2: "0x61fFE014bA17989E743c5F6cB21bF9697530B21e",
         WETH: "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619",
         WMATIC: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
         USDC: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
@@ -34,6 +36,7 @@ export const getAddresses = (network: string): Addresses => {
         UniswapV3Factory: "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
         SwapRouter: "",
         SwapRouter02: "0x2626664c2603336E57B271c5C0b26F421741e481",
+        QuoterV2: "0x61fFE014bA17989E743c5F6cB21bF9697530B21e",
         WETH: "0x4200000000000000000000000000000000000006",
         WMATIC: "",
         USDC: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
