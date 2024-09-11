@@ -22,7 +22,7 @@ contract FeeManager is IFeeManager, Ownable {
     IQuoterV2 public immutable quoter;
     uint256 public accumulatedRewardsPerShare;
     mapping(address => uint256) public rewardDebt;
-    uint256 public constant REWARDS_PRECISION = 1e36;
+    uint256 public constant REWARDS_PRECISION = 1e18;
     uint24 public immutable feeTier;
 
     modifier onlyVault() {
@@ -112,7 +112,7 @@ contract FeeManager is IFeeManager, Ownable {
     }
 
     function _swapToUSDC(address token, uint256 feesToken)
-        internal
+        private
         returns (uint256 feesUSDC)
     {
         if (feesToken == 0) {
@@ -155,7 +155,7 @@ contract FeeManager is IFeeManager, Ownable {
         uint256 fee0,
         address token1,
         uint256 fee1
-    ) internal returns (uint256 usdcFee) {
+    ) private returns (uint256 usdcFee) {
         if (address(token0) != address(usdc)) {
             usdcFee += _swapToUSDC(address(token0), fee0);
         } else {

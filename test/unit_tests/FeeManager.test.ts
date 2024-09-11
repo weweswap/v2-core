@@ -123,14 +123,14 @@ const deployVault = async (
   await weth.approve(arrakisV2.address, ethers.constants.MaxUint256);
   await usdc.approve(arrakisV2.address, ethers.constants.MaxUint256);
 
-  const result2 = await arrakisV2Resolver.getMintAmounts(
-    arrakisV2.address,
-    res.amount0,
-    res.amount1
-  );
+  // const result2 = await arrakisV2Resolver.getMintAmounts(
+  //   arrakisV2.address,
+  //   res.amount0,
+  //   res.amount1
+  // );
 
-  await arrakisV2.mint(result2.mintAmount, await owner.getAddress());
-
+  await arrakisV2.mint("900000000000000000000000", await owner.getAddress());
+  await arrakisV2.mint("99999000000000000000000", await owner.getAddress());
   const rebalanceParams = await arrakisV2Resolver.standardRebalance(
     [{ range: { lowerTick, upperTick, feeTier: 500 }, weight: 10000 }],
     arrakisV2.address
@@ -433,7 +433,7 @@ describe("FeeManager unit test", function () {
       );
     });
 
-    it("#2: Get half reward when your are 50% in the vault", async () => {
+    it("#1: Get half reward when your are 50% in the vault", async () => {
       await arrakisV2.mint("1000000000000000000", userAddr3);
       let postBalanceUser3 = await usdc.balanceOf(userAddr3);
       expect(postBalanceUser3).to.be.equal(0);
@@ -474,7 +474,7 @@ describe("FeeManager unit test", function () {
       postBalanceUser4 = await usdc.balanceOf(userAddr4);
       expect(postBalanceUser4).to.be.equal(0);
     });
-    it("#4: Collect on burn", async () => {
+    it("#2: Collect on burn", async () => {
       await arrakisV2.mint("1000000000000000000", userAddr4);
       await arrakisV2.collectFees(); // Claim fees to clean pending fees derived from mint
       await feeManager.connect(user2).claimFees(userAddr2); // Claim fees to clean pending fees derived from mint
@@ -513,7 +513,7 @@ describe("FeeManager unit test", function () {
         ethers.utils.parseUnits("2", 6)
       );
     });
-    it("#6: Collect differente times with more than one user", async () => {
+    it("#4: Collect differente times with more than one user", async () => {
       // RewardsPerBlock = $1
       // On block 0, Staker A deposits $100
       // On block 10, Staker B deposits $400
@@ -580,12 +580,6 @@ describe("FeeManager unit test", function () {
         ethers.utils.parseUnits("4", 6)
       );
     });
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    it.skip("#5: Collect on rebalance", async () => {});
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    it.skip("#5: And small amounts", async () => {});
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    it.skip("#1: Try call deposit fees without be the vault", async () => {});
   });
 
   describe("Dual side fees", async () => {
@@ -726,8 +720,8 @@ describe("FeeManager unit test", function () {
     });
   });
 
-  describe.skip("Preccision on dust collects", async () => {
-    it("#0: Collect dust fee with large supply on vault", async () => {
+  describe("Preccision on dust collects", async () => {
+    it("#0: Try to collect dust less than 0,000001", async () => {
       const { customVault, customFeeManager } = await deployVault(
         uniswapV3Pool,
         arrakisV2Resolver,
@@ -738,13 +732,7 @@ describe("FeeManager unit test", function () {
         usdc,
         wEth
       );
-      await customVault.mint("100000000000000000000000", userAddr2);
-      const balance1 = await customVault.balanceOf(userAddr);
-      console.log("balance user 1", balance1.toString());
-      const balance2 = await customVault.balanceOf(userAddr2);
-      console.log("balance user 2", balance2.toString());
-      // const totalSupply = await customVault.totalSupply();
-      // console.log("totalSupply M", totalSupply.toString());
+      await customVault.mint("1000000000000000000", userAddr2);
       await depositRewardsInVault(
         wEth,
         ethers.utils.parseUnits("0", 18),
@@ -753,48 +741,13 @@ describe("FeeManager unit test", function () {
         customFeeManager,
         customVault
       );
-      // await depositRewardsInVault(
-      //   wEth,
-      //   ethers.utils.parseUnits("0", 18),
-      //   usdc,
-      //   ethers.utils.parseUnits("0.000001", 6),
-      //   feeManager,
-      //   arrakisV2
-      // );
-      // await depositRewardsInVault(
-      //   wEth,
-      //   ethers.utils.parseUnits("0", 18),
-      //   usdc,
-      //   ethers.utils.parseUnits("0.000001", 6),
-      //   feeManager,
-      //   arrakisV2
-      // );
-      // await depositRewardsInVault(
-      //   wEth,
-      //   ethers.utils.parseUnits("0", 18),
-      //   usdc,
-      //   ethers.utils.parseUnits("0.000001", 6),
-      //   feeManager,
-      //   arrakisV2
-      // );
-      // await depositRewardsInVault(
-      //   wEth,
-      //   ethers.utils.parseUnits("0", 18),
-      //   usdc,
-      //   ethers.utils.parseUnits("0.000001", 6),
-      //   feeManager,
-      //   arrakisV2
-      // );
-      // await depositRewardsInVault(
-      //   wEth,
-      //   ethers.utils.parseUnits("0", 18),
-      //   usdc,
-      //   ethers.utils.parseUnits("0.000001", 6),
-      //   feeManager,
-      //   arrakisV2
-      // );
-      const acc = await customFeeManager.accumulatedRewardsPerShare();
-      console.log("acc", acc.toString());
+      const prevBalanceUser2 = await usdc.balanceOf(userAddr2);
+      await customFeeManager.connect(user2).claimFees(userAddr2);
+      const postBalanceUser2 = await usdc.balanceOf(userAddr2);
+      expect(postBalanceUser2.sub(prevBalanceUser2)).to.be.closeTo(
+        ethers.utils.parseUnits("0.000001", 6),
+        0
+      );
     });
   });
 });

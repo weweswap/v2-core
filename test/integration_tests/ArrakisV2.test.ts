@@ -861,7 +861,7 @@ describe("Arrakis V2 integration test!!!", async function () {
 
     // #region withdraw as manager.
   });
-  it.skip("#5: Collect fees", async () => {
+  it("#5: Collect fees", async () => {
     // #region mint arrakis token by Lp.
 
     await wEth.approve(vaultV2.address, ethers.constants.MaxUint256);
@@ -909,10 +909,6 @@ describe("Arrakis V2 integration test!!!", async function () {
       swapRouter,
       user
     )) as ISwapRouter;
-
-    const wMaticBalance = await wMatic.balanceOf(await user.getAddress());
-    console.log("wMaticBalance", wMaticBalance.toString());
-    console.log("maticBalance", (await user.getBalance()).toString());
 
     await wMatic.deposit({ value: ethers.utils.parseUnits("3000", 18) });
     await wMatic.approve(swapR.address, ethers.utils.parseUnits("3000", 18));
@@ -962,6 +958,7 @@ describe("Arrakis V2 integration test!!!", async function () {
       wethBalance
     );
 
+    await vaultV2.collectFees();
     await vaultV2.connect(user2).mint(result.mintAmount, user2Addr);
 
     const balance2 = await vaultV2.balanceOf(user2Addr);
@@ -970,122 +967,301 @@ describe("Arrakis V2 integration test!!!", async function () {
 
     // #region do a swap to generate fees.
 
-    // await increaseBalance(await user.getAddress(), "2000"); // 10,000 ETH/MATIC
-    // await wMatic.deposit({ value: ethers.utils.parseUnits("10000", 18) });
-    // await wMatic.approve(swapR.address, ethers.utils.parseUnits("10000", 18));
-
-    // await swapR.exactInputSingle({
-    //   tokenIn: addresses.WMATIC,
-    //   tokenOut: addresses.WETH,
-    //   fee: 500,
-    //   recipient: userAddr,
-    //   deadline: ethers.constants.MaxUint256,
-    //   amountIn: ethers.utils.parseUnits("10000", 18),
-    //   amountOutMinimum: ethers.constants.Zero,
-    //   sqrtPriceLimitX96: 0,
-    // });
-
-    // await wEth.approve(swapR.address, ethers.utils.parseEther("0.01"));
-
-    // await swapR.exactInputSingle({
-    //   tokenIn: wEth.address,
-    //   tokenOut: usdc.address,
-    //   fee: 500,
-    //   recipient: userAddr,
-    //   deadline: ethers.constants.MaxUint256,
-    //   amountIn: ethers.utils.parseEther("0.01"),
-    //   amountOutMinimum: ethers.constants.Zero,
-    //   sqrtPriceLimitX96: 0,
-    // });
-
     for (let i = 0; i < 1; i++) {
-      console.log(`Ejecutando llamada ${i + 1}`);
+      // User 1 per loop 190
+      // User 2 per loop 64
       await generateFees(userAddr, wMatic, swapR, addresses, wEth, usdc);
     }
 
     await vaultV2.collectFees();
 
     // Claim all fees from fee manager
-
-    // const feeManagerUser1: IFeeManager = (await ethers.getContractAt(
-    //   "FeeManager",
-    //   feeManager.address,
-    //   userAddr
-    // )) as IFeeManager;
-
-    // await feeManagerUser1.claimFees(userAddr);
-
-    // Claim all fees from fee manager
-    const feeManagerUser2: IFeeManager = (await ethers.getContractAt(
+    const feeManagerUser: IFeeManager = (await ethers.getContractAt(
       "FeeManager",
       feeManager.address,
       user2Addr
     )) as IFeeManager;
 
-    await feeManagerUser2.claimFees(user2Addr);
+    const prevBalanceUser2 = await usdc.balanceOf(user2Addr);
+    await feeManagerUser.claimFees(user2Addr);
+    const postBalanceUser2 = await usdc.balanceOf(user2Addr);
+
+    expect(postBalanceUser2.sub(prevBalanceUser2)).to.be.closeTo(
+      ethers.utils.parseUnits("0.000064", 6),
+      0
+    );
+
+    const prevBalanceUser = await usdc.balanceOf(userAddr);
+    await feeManagerUser.connect(user).claimFees(userAddr);
+    const postBalanceUser = await usdc.balanceOf(userAddr);
+
+    expect(postBalanceUser.sub(prevBalanceUser)).to.be.closeTo(
+      ethers.utils.parseUnits("0.000190", 6),
+      0
+    );
+  });
+  it("#6: Burn twice don't collect more rewards than expected", async () => {
+    // #region mint arrakis token by Lp.
+
+    await wEth.approve(vaultV2.address, ethers.constants.MaxUint256);
+    await usdc.approve(vaultV2.address, ethers.constants.MaxUint256);
+
+    // #endregion approve weth and usdc token to vault.
+
+    // #region user balance of weth and usdc.
+
+    let wethBalance = await wEth.balanceOf(userAddr);
+    let usdcBalance = await usdc.balanceOf(userAddr);
+
+    // #endregion user balance of weth and usdc.
+
+    // #region mint arrakis vault V2 token.
+
+    let result = await arrakisV2Resolver.getMintAmounts(
+      vaultV2.address,
+      usdcBalance,
+      wethBalance
+    );
+
+    await vaultV2.mint(result.mintAmount, userAddr);
+
+    const balance = await vaultV2.balanceOf(userAddr);
+
+    expect(balance).to.be.eq(result.mintAmount);
+
+    // #endregion mint arrakis token by Lp.
+    // #region rebalance to deposit user token into the uniswap v3 pool.
+
+    const rebalanceParams = await arrakisV2Resolver.standardRebalance(
+      [{ range: { lowerTick, upperTick, feeTier: 500 }, weight: 10000 }],
+      vaultV2.address
+    );
+
+    await managerProxyMock.rebalance(vaultV2.address, rebalanceParams);
+
+    // #region do a swap to generate fees.
+
+    const swapRouter = "0xE592427A0AEce92De3Edee1F18E0157C05861564";
+
+    const swapR: ISwapRouter = (await ethers.getContractAt(
+      "ISwapRouter",
+      swapRouter,
+      user
+    )) as ISwapRouter;
+
+    await wMatic.deposit({ value: ethers.utils.parseUnits("3000", 18) });
+    await wMatic.approve(swapR.address, ethers.utils.parseUnits("3000", 18));
+
+    await swapR.exactInputSingle({
+      tokenIn: addresses.WMATIC,
+      tokenOut: addresses.WETH,
+      fee: 500,
+      recipient: userAddr,
+      deadline: ethers.constants.MaxUint256,
+      amountIn: ethers.utils.parseUnits("3000", 18),
+      amountOutMinimum: ethers.constants.Zero,
+      sqrtPriceLimitX96: 0,
+    });
+
+    await wEth.approve(swapR.address, ethers.utils.parseEther("0.003"));
+
+    await swapR.exactInputSingle({
+      tokenIn: wEth.address,
+      tokenOut: usdc.address,
+      fee: 500,
+      recipient: userAddr,
+      deadline: ethers.constants.MaxUint256,
+      amountIn: ethers.utils.parseEther("0.003"),
+      amountOutMinimum: ethers.constants.Zero,
+      sqrtPriceLimitX96: 0,
+    });
 
     // #endregion do a swap to generate fess.
 
-    // #endregion burn token to get back token to user.
+    // #endregion rebalance to deposit user token into the uniswap v3 pool.
 
-    // #region rebalance to remove the range.
+    const user2Addr = await user2.getAddress();
 
-    // await managerProxyMock.rebalance(
-    //   vaultV2.address,
-    //   await arrakisV2Resolver.standardRebalance([], vaultV2.address)
-    // );
+    wethBalance = await wEth.balanceOf(userAddr);
+    usdcBalance = await usdc.balanceOf(userAddr);
 
-    // const userBalanceLpToken = await vaultV2.balanceOf(userAddr);
-    // console.log("userBalanceLpToken", userBalanceLpToken.toString());
-    // console.log("vault address", vaultV2.address);
+    await wEth.transfer(user2Addr, wethBalance);
+    await usdc.transfer(user2Addr, usdcBalance);
 
-    // // Claim all fees from fee manager
-    // const feeManagerUser1: IFeeManager = (await ethers.getContractAt(
-    //   "FeeManager",
-    //   feeManager.address,
-    //   userAddr
-    // )) as IFeeManager;
+    await wEth.connect(user2).approve(vaultV2.address, wethBalance);
+    await usdc.connect(user2).approve(vaultV2.address, usdcBalance);
 
-    // await feeManagerUser1.claimFees(userAddr);
+    result = await arrakisV2Resolver.getMintAmounts(
+      vaultV2.address,
+      usdcBalance,
+      wethBalance
+    );
 
-    // console.log("Fee manager", feeManager.address);
-    // const feeManagerBalance = await usdc.balanceOf(feeManager.address);
-    // console.log("feeManagerBalance", feeManagerBalance.toString());
+    await vaultV2.collectFees();
+    await vaultV2.connect(user2).mint(result.mintAmount, user2Addr);
 
-    // #endregion rebalance to remove the range.
+    const balance2 = await vaultV2.balanceOf(user2Addr);
 
-    // #region withdraw as manager.
+    expect(balance2).to.be.eq(result.mintAmount);
 
-    // TODO: Reenable once we support manager fees
-    // const managerAddr = await vaultV2.manager();
+    // #region do a swap to generate fees.
 
-    // managerProxyMock.fundVaultBalance(vaultV2.address, {
-    //   value: ethers.utils.parseEther("1"),
-    // });
+    for (let i = 0; i < 1; i++) {
+      // User 1 per loop 190
+      // User 2 per loop 64
+      await generateFees(userAddr, wMatic, swapR, addresses, wEth, usdc);
+    }
 
-    // const managerT0B = await usdc.balanceOf(managerAddr);
-    // const managerT1B = await wEth.balanceOf(managerAddr);
+    const prevBalanceUser2 = await usdc.balanceOf(user2Addr);
+    await vaultV2.connect(user2).burn("1000", user2Addr);
+    const postBalanceUser2 = await usdc.balanceOf(user2Addr);
 
-    // await hre.network.provider.request({
-    //   method: "hardhat_impersonateAccount",
-    //   params: [managerAddr],
-    // });
+    expect(postBalanceUser2.sub(prevBalanceUser2)).to.be.closeTo(
+      ethers.utils.parseUnits("0.000064", 6),
+      0
+    );
 
-    // const managerSigner = await ethers.getSigner(managerAddr);
+    const prevBalanceUser2twice = await usdc.balanceOf(user2Addr);
+    await vaultV2.connect(user2).burn("1000", user2Addr);
+    const postBalanceUser2twice = await usdc.balanceOf(user2Addr);
 
-    // await vaultV2.connect(managerSigner).withdrawManagerBalance();
+    expect(postBalanceUser2twice.sub(prevBalanceUser2twice)).to.be.equal(0);
+  });
+  it("#7: Mint twice don't collect more rewards than expected", async () => {
+    // #region mint arrakis token by Lp.
 
-    // await hre.network.provider.request({
-    //   method: "hardhat_stopImpersonatingAccount",
-    //   params: [managerAddr],
-    // });
+    await wEth.approve(vaultV2.address, ethers.constants.MaxUint256);
+    await usdc.approve(vaultV2.address, ethers.constants.MaxUint256);
 
-    // const managerT0A = await usdc.balanceOf(managerAddr);
-    // const managerT1A = await wEth.balanceOf(managerAddr);
+    // #endregion approve weth and usdc token to vault.
 
-    // expect(managerT0A).to.be.gte(managerT0B);
-    // expect(managerT1A).to.be.gt(managerT1B);
+    // #region user balance of weth and usdc.
 
-    // #region withdraw as manager.
+    let wethBalance = await wEth.balanceOf(userAddr);
+    let usdcBalance = await usdc.balanceOf(userAddr);
+
+    // #endregion user balance of weth and usdc.
+
+    // #region mint arrakis vault V2 token.
+
+    let result = await arrakisV2Resolver.getMintAmounts(
+      vaultV2.address,
+      usdcBalance,
+      wethBalance
+    );
+
+    await vaultV2.mint(result.mintAmount, userAddr);
+
+    const balance = await vaultV2.balanceOf(userAddr);
+
+    expect(balance).to.be.eq(result.mintAmount);
+
+    // #endregion mint arrakis token by Lp.
+    // #region rebalance to deposit user token into the uniswap v3 pool.
+
+    const rebalanceParams = await arrakisV2Resolver.standardRebalance(
+      [{ range: { lowerTick, upperTick, feeTier: 500 }, weight: 10000 }],
+      vaultV2.address
+    );
+
+    await managerProxyMock.rebalance(vaultV2.address, rebalanceParams);
+
+    // #region do a swap to generate fees.
+
+    const swapRouter = "0xE592427A0AEce92De3Edee1F18E0157C05861564";
+
+    const swapR: ISwapRouter = (await ethers.getContractAt(
+      "ISwapRouter",
+      swapRouter,
+      user
+    )) as ISwapRouter;
+
+    await wMatic.deposit({ value: ethers.utils.parseUnits("3000", 18) });
+    await wMatic.approve(swapR.address, ethers.utils.parseUnits("3000", 18));
+
+    await swapR.exactInputSingle({
+      tokenIn: addresses.WMATIC,
+      tokenOut: addresses.WETH,
+      fee: 500,
+      recipient: userAddr,
+      deadline: ethers.constants.MaxUint256,
+      amountIn: ethers.utils.parseUnits("3000", 18),
+      amountOutMinimum: ethers.constants.Zero,
+      sqrtPriceLimitX96: 0,
+    });
+
+    await wEth.approve(swapR.address, ethers.utils.parseEther("0.003"));
+
+    await swapR.exactInputSingle({
+      tokenIn: wEth.address,
+      tokenOut: usdc.address,
+      fee: 500,
+      recipient: userAddr,
+      deadline: ethers.constants.MaxUint256,
+      amountIn: ethers.utils.parseEther("0.003"),
+      amountOutMinimum: ethers.constants.Zero,
+      sqrtPriceLimitX96: 0,
+    });
+
+    // #endregion do a swap to generate fess.
+
+    // #endregion rebalance to deposit user token into the uniswap v3 pool.
+
+    const user2Addr = await user2.getAddress();
+
+    wethBalance = await wEth.balanceOf(userAddr);
+    usdcBalance = await usdc.balanceOf(userAddr);
+
+    await wEth.transfer(user2Addr, wethBalance);
+    await usdc.transfer(user2Addr, usdcBalance);
+
+    await wEth
+      .connect(user2)
+      .approve(vaultV2.address, ethers.constants.MaxUint256);
+    await usdc
+      .connect(user2)
+      .approve(vaultV2.address, ethers.constants.MaxUint256);
+
+    result = await arrakisV2Resolver.getMintAmounts(
+      vaultV2.address,
+      usdcBalance,
+      wethBalance
+    );
+
+    await vaultV2.collectFees();
+    await vaultV2.connect(user2).mint(result.mintAmount, user2Addr);
+
+    const balance2 = await vaultV2.balanceOf(user2Addr);
+
+    expect(balance2).to.be.eq(result.mintAmount);
+
+    // #region do a swap to generate fees.
+
+    for (let i = 0; i < 1; i++) {
+      await generateFees(userAddr, wMatic, swapR, addresses, wEth, usdc);
+    }
+
+    result = await arrakisV2Resolver.getMintAmounts(
+      vaultV2.address,
+      "1000",
+      "1000"
+    );
+
+    const prevBalanceUser2 = await usdc.balanceOf(user2Addr);
+    await vaultV2.connect(user2).mint("1000", user2Addr);
+    const postBalanceUser2 = await usdc.balanceOf(user2Addr);
+
+    expect(postBalanceUser2.sub(prevBalanceUser2)).to.be.closeTo(
+      ethers.utils.parseUnits("0.000064", 6).sub(result.amount0),
+      0
+    );
+
+    const prevBalanceUser2twice = await usdc.balanceOf(user2Addr);
+    await vaultV2.connect(user2).mint("1000", user2Addr);
+    const postBalanceUser2twice = await usdc.balanceOf(user2Addr);
+
+    expect(
+      postBalanceUser2twice.sub(prevBalanceUser2twice).add(result.amount0)
+    ).to.be.equal(ethers.utils.parseUnits("0", 6));
   });
 });
