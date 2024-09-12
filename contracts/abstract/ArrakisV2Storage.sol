@@ -125,7 +125,7 @@ abstract contract ArrakisV2Storage is
     }
 
     modifier featureDisabled() {
-        revert("This feature is disabled in the current version");
+        revert("FD");
         _;
     }
 

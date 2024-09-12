@@ -209,6 +209,7 @@ describe("Rounding integration test", async function () {
       vaultV2.address,
       addresses.USDC,
       addresses.SwapRouter02,
+      addresses.QuoterV2,
       3000
     );
 

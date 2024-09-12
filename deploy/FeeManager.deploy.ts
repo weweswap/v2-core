@@ -30,7 +30,13 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { deployer } = await getNamedAccounts();
   await deploy("FeeManager", {
     from: deployer,
-    args: [vaultAddress, addresses.USDC, addresses.SwapRouter02, 10000],
+    args: [
+      vaultAddress,
+      addresses.USDC,
+      addresses.SwapRouter02,
+      addresses.QuoterV2,
+      10000,
+    ],
     log: hre.network.name != "hardhat" ? true : false,
   });
 };

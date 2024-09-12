@@ -7,6 +7,8 @@ import {
   ArrakisV2Factory,
   ArrakisV2Resolver,
   FeeManager,
+  IArrakisV2Factory,
+  IArrakisV2Resolver,
   ISwapRouter,
   IUniswapV3Factory,
   IUniswapV3Pool,
@@ -14,6 +16,124 @@ import {
 } from "../../typechain";
 import { getAddresses, Addresses } from "../../src/addresses";
 const { ethers, deployments } = hre;
+
+// Only acepts ERC20
+const depositRewardsInVault = async (
+  weth: Contract,
+  fee0: BigNumber,
+  usdc: Contract,
+  fee1: BigNumber,
+  feeManager: FeeManager,
+  vaultToImpersonate: ArrakisV2
+) => {
+  // Generate add founds to de vault (simulate fees) + add matic for pay fees
+  await weth.transfer(vaultToImpersonate.address, fee0);
+  await usdc.transfer(vaultToImpersonate.address, fee1);
+
+  // Start impersonation
+  await hre.network.provider.request({
+    method: "hardhat_impersonateAccount",
+    params: [vaultToImpersonate.address],
+  });
+  const maticBalance = ethers.utils.hexlify(
+    ethers.utils.parseUnits("0.03", 18)
+  );
+  await hre.network.provider.send("hardhat_setBalance", [
+    vaultToImpersonate.address,
+    maticBalance,
+  ]);
+  const vaultSigner = await ethers.provider.getSigner(
+    vaultToImpersonate.address
+  );
+  await weth
+    .connect(vaultSigner)
+    .approve(feeManager.address, ethers.constants.MaxUint256);
+  await usdc
+    .connect(vaultSigner)
+    .approve(feeManager.address, ethers.constants.MaxUint256);
+  await feeManager
+    .connect(vaultSigner)
+    .depositFees(weth.address, fee0, usdc.address, fee1);
+  await hre.network.provider.request({
+    method: "hardhat_stopImpersonatingAccount",
+    params: [vaultToImpersonate.address],
+  });
+};
+
+const deployVault = async (
+  uniswapV3Pool: IUniswapV3Pool,
+  arrakisV2Resolver: IArrakisV2Resolver,
+  arrakisV2Factory: IArrakisV2Factory,
+  managerProxyMock: ManagerProxyMock,
+  owner: Signer,
+  shareFraccion = 1,
+  usdc: Contract,
+  weth: Contract
+) => {
+  const slot0 = await uniswapV3Pool.slot0();
+  const tickSpacing = await uniswapV3Pool.tickSpacing();
+  const addresses = getAddresses(hre.network.name);
+
+  const lowerTick = slot0.tick - (slot0.tick % tickSpacing) - tickSpacing;
+  const upperTick = slot0.tick - (slot0.tick % tickSpacing) + 2 * tickSpacing;
+
+  const res = await arrakisV2Resolver.getAmountsForLiquidity(
+    slot0.sqrtPriceX96,
+    lowerTick,
+    upperTick,
+    ethers.utils.parseUnits("0.01", 18)
+  );
+
+  const tx = await arrakisV2Factory.deployVault(
+    {
+      feeTiers: [500],
+      token0: addresses.USDC,
+      token1: addresses.WETH,
+      owner: await owner.getAddress(),
+      init0: res.amount0.div(shareFraccion),
+      init1: res.amount1.div(shareFraccion),
+      manager: managerProxyMock.address,
+      routers: [],
+    },
+    true
+  );
+
+  const rc = await tx.wait();
+  const event = rc?.events?.find((event) => event.event === "VaultCreated");
+  // eslint-disable-next-line no-unsafe-optional-chaining
+  const result = event?.args;
+
+  const arrakisV2 = (await ethers.getContractAt(
+    "ArrakisV2",
+    result?.vault,
+    owner
+  )) as ArrakisV2;
+
+  const feeManagerFactory = await ethers.getContractFactory("FeeManager");
+  const feeManager = (await feeManagerFactory.deploy(
+    arrakisV2.address,
+    addresses.USDC,
+    addresses.SwapRouter02,
+    addresses.QuoterV2,
+    3000
+  )) as FeeManager;
+
+  arrakisV2.connect(owner).setFeeManager(feeManager.address);
+
+  await weth.approve(arrakisV2.address, ethers.constants.MaxUint256);
+  await usdc.approve(arrakisV2.address, ethers.constants.MaxUint256);
+
+  await arrakisV2.mint("900000000000000000000000", await owner.getAddress());
+  await arrakisV2.mint("99999000000000000000000", await owner.getAddress());
+  const rebalanceParams = await arrakisV2Resolver.standardRebalance(
+    [{ range: { lowerTick, upperTick, feeTier: 500 }, weight: 10000 }],
+    arrakisV2.address
+  );
+
+  await managerProxyMock.rebalance(arrakisV2.address, rebalanceParams);
+
+  return { customVault: arrakisV2, customFeeManager: feeManager };
+};
 
 describe("FeeManager unit test", function () {
   this.timeout(0);
@@ -41,49 +161,6 @@ describe("FeeManager unit test", function () {
   let lowerTick: number;
   let upperTick: number;
   let slot0: any;
-
-  // Only acepts ERC20
-  const depositRewardsInVault = async (
-    weth: Contract,
-    fee0: BigNumber,
-    usdc: Contract,
-    fee1: BigNumber,
-    feeManager: FeeManager,
-    vaultToImpersonate: ArrakisV2
-  ) => {
-    // Generate add founds to de vault (simulate fees) + add matic for pay fees
-    await weth.transfer(vaultToImpersonate.address, fee0);
-    await usdc.transfer(vaultToImpersonate.address, fee1);
-
-    // Start impersonation
-    await hre.network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [vaultToImpersonate.address],
-    });
-    const maticBalance = ethers.utils.hexlify(
-      ethers.utils.parseUnits("0.03", 18)
-    );
-    await hre.network.provider.send("hardhat_setBalance", [
-      vaultToImpersonate.address,
-      maticBalance,
-    ]);
-    const vaultSigner = await ethers.provider.getSigner(
-      vaultToImpersonate.address
-    );
-    await wEth
-      .connect(vaultSigner)
-      .approve(feeManager.address, ethers.constants.MaxUint256);
-    await usdc
-      .connect(vaultSigner)
-      .approve(feeManager.address, ethers.constants.MaxUint256);
-    await feeManager
-      .connect(vaultSigner)
-      .depositFees(weth.address, fee0, usdc.address, fee1);
-    await hre.network.provider.request({
-      method: "hardhat_stopImpersonatingAccount",
-      params: [vaultToImpersonate.address],
-    });
-  };
 
   beforeEach(
     "Setting up for FeeManager functions unit test",
@@ -189,6 +266,7 @@ describe("FeeManager unit test", function () {
         arrakisV2.address,
         addresses.USDC,
         addresses.SwapRouter02,
+        addresses.QuoterV2,
         3000
       )) as FeeManager;
 
@@ -349,7 +427,7 @@ describe("FeeManager unit test", function () {
       );
     });
 
-    it("#2: Get half reward when your are 50% in the vault", async () => {
+    it("#1: Get half reward when your are 50% in the vault", async () => {
       await arrakisV2.mint("1000000000000000000", userAddr3);
       let postBalanceUser3 = await usdc.balanceOf(userAddr3);
       expect(postBalanceUser3).to.be.equal(0);
@@ -390,7 +468,7 @@ describe("FeeManager unit test", function () {
       postBalanceUser4 = await usdc.balanceOf(userAddr4);
       expect(postBalanceUser4).to.be.equal(0);
     });
-    it("#4: Collect on burn", async () => {
+    it("#2: Collect on burn", async () => {
       await arrakisV2.mint("1000000000000000000", userAddr4);
       await arrakisV2.collectFees(); // Claim fees to clean pending fees derived from mint
       await feeManager.connect(user2).claimFees(userAddr2); // Claim fees to clean pending fees derived from mint
@@ -429,7 +507,7 @@ describe("FeeManager unit test", function () {
         ethers.utils.parseUnits("2", 6)
       );
     });
-    it("#6: Collect differente times with more than one user", async () => {
+    it("#4: Collect differente times with more than one user", async () => {
       // RewardsPerBlock = $1
       // On block 0, Staker A deposits $100
       // On block 10, Staker B deposits $400
@@ -496,12 +574,6 @@ describe("FeeManager unit test", function () {
         ethers.utils.parseUnits("4", 6)
       );
     });
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    it.skip("#5: Collect on rebalance", async () => {});
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    it.skip("#5: And small amounts", async () => {});
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    it.skip("#1: Try call deposit fees without be the vault", async () => {});
   });
 
   describe("Dual side fees", async () => {
@@ -638,6 +710,37 @@ describe("FeeManager unit test", function () {
       expect(postBalanceUser3.sub(prevBalanceUser3)).to.be.closeTo(
         ethers.utils.parseUnits(String(4 + 4 * conversion), 6),
         delta
+      );
+    });
+  });
+
+  describe("Preccision on dust collects", async () => {
+    it("#0: Try to collect dust less than 0,000001", async () => {
+      const { customVault, customFeeManager } = await deployVault(
+        uniswapV3Pool,
+        arrakisV2Resolver,
+        arrakisV2Factory,
+        managerProxyMock,
+        user,
+        1000000,
+        usdc,
+        wEth
+      );
+      await customVault.mint("1000000000000000000", userAddr2);
+      await depositRewardsInVault(
+        wEth,
+        ethers.utils.parseUnits("0", 18),
+        usdc,
+        ethers.utils.parseUnits("1", 6),
+        customFeeManager,
+        customVault
+      );
+      const prevBalanceUser2 = await usdc.balanceOf(userAddr2);
+      await customFeeManager.connect(user2).claimFees(userAddr2);
+      const postBalanceUser2 = await usdc.balanceOf(userAddr2);
+      expect(postBalanceUser2.sub(prevBalanceUser2)).to.be.closeTo(
+        ethers.utils.parseUnits("0.000001", 6),
+        0
       );
     });
   });
