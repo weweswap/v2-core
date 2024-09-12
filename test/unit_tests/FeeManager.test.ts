@@ -123,12 +123,6 @@ const deployVault = async (
   await weth.approve(arrakisV2.address, ethers.constants.MaxUint256);
   await usdc.approve(arrakisV2.address, ethers.constants.MaxUint256);
 
-  // const result2 = await arrakisV2Resolver.getMintAmounts(
-  //   arrakisV2.address,
-  //   res.amount0,
-  //   res.amount1
-  // );
-
   await arrakisV2.mint("900000000000000000000000", await owner.getAddress());
   await arrakisV2.mint("99999000000000000000000", await owner.getAddress());
   const rebalanceParams = await arrakisV2Resolver.standardRebalance(
