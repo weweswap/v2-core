@@ -32,7 +32,7 @@ describe("Factory function unit test", function () {
     addresses = getAddresses(hre.network.name);
     await deployments.fixture();
 
-    [user, owner] = await ethers.getSigners();
+    [user, , owner] = await ethers.getSigners();
     userAddr = await user.getAddress();
 
     // const addr =
