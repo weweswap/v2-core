@@ -16,7 +16,6 @@ describe("Factory function unit test", function () {
   this.timeout(0);
 
   let user: Signer;
-  let user2: Signer;
   let userAddr: string;
   let arrakisV2Factory: ArrakisV2Factory;
   let uniswapV3Pool: IUniswapV3Pool;
@@ -33,7 +32,7 @@ describe("Factory function unit test", function () {
     addresses = getAddresses(hre.network.name);
     await deployments.fixture();
 
-    [user, user2, owner] = await ethers.getSigners();
+    [user, owner] = await ethers.getSigners();
     userAddr = await user.getAddress();
 
     // const addr =
