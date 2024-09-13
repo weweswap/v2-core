@@ -5,7 +5,6 @@ import hre = require("hardhat");
 import {
   ArrakisV2,
   ArrakisV2Factory,
-  ArrakisV2Helper,
   ArrakisV2Resolver,
   FeeManager,
   IArrakisV2Factory,
@@ -197,7 +196,6 @@ describe("FeeManager unit test", function () {
   let arrakisV2Factory: ArrakisV2Factory;
   let managerProxyMock: ManagerProxyMock;
   let arrakisV2Resolver: ArrakisV2Resolver;
-  let arrakisV2Helper: ArrakisV2Helper;
   let swapRouter: ISwapRouter;
   let addresses: Addresses;
   let feeManager: FeeManager;
@@ -236,10 +234,6 @@ describe("FeeManager unit test", function () {
         addresses.UniswapV3Factory,
         user
       )) as IUniswapV3Factory;
-      arrakisV2Helper = (await ethers.getContract(
-        "ArrakisV2Helper",
-        user
-      )) as ArrakisV2Helper;
       managerProxyMock = (await ethers.getContract(
         "ManagerProxyMock"
       )) as ManagerProxyMock;

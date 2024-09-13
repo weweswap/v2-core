@@ -11,7 +11,9 @@ import {IV3SwapRouter} from "./univ3-0.8/IV3SwapRouter.sol";
 import {ISwapRouter02} from "./univ3-0.8/ISwapRouter02.sol";
 import {TransferHelper} from "./univ3-0.8/TransferHelper.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IQuoterV2} from "@uniswap/v3-periphery/contracts/interfaces/IQuoterV2.sol";
+import {
+    IQuoterV2
+} from "@uniswap/v3-periphery/contracts/interfaces/IQuoterV2.sol";
 
 contract FeeManager is IFeeManager, Ownable {
     using SafeERC20 for IERC20;
@@ -121,18 +123,23 @@ contract FeeManager is IFeeManager, Ownable {
 
         TransferHelper.safeApprove(token, address(router), feesToken);
 
-        IQuoterV2.QuoteExactInputSingleParams memory paramsQuote = IQuoterV2.QuoteExactInputSingleParams({
-            tokenIn: address(token),
-            tokenOut: address(usdc),
-            amountIn: feesToken,
-            fee: feeTier,
-            sqrtPriceLimitX96: 0
-        });
+        IQuoterV2.QuoteExactInputSingleParams memory paramsQuote = IQuoterV2
+            .QuoteExactInputSingleParams({
+                tokenIn: address(token),
+                tokenOut: address(usdc),
+                amountIn: feesToken,
+                fee: feeTier,
+                sqrtPriceLimitX96: 0
+            });
 
-        (uint256 amountOut,,,) = quoter.quoteExactInputSingle(paramsQuote);
+        (uint256 amountOut, , , ) = quoter.quoteExactInputSingle(paramsQuote);
 
         uint256 slippageTolerance = 95;
-        uint256 amountOutMinimum = FullMath.mulDiv(amountOut, slippageTolerance, 100);
+        uint256 amountOutMinimum = FullMath.mulDiv(
+            amountOut,
+            slippageTolerance,
+            100
+        );
 
         IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
             .ExactInputSingleParams({
