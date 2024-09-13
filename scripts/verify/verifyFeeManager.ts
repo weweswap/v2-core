@@ -1,12 +1,12 @@
 import hre from "hardhat";
 import { Addresses, getAddresses } from "../../src/addresses";
 
-const vaultAddress = "0xb13688c877268e32cc4584B6e06A3984d016dBB2"; // TODO: Automatize deploy vault
+const vaultAddress = "0x6bAffADA267Ef0FbdDEFc05592271bED9a0B4a5E"; // TODO: Automatize deploy vault
 
 async function main() {
   const addresses: Addresses = getAddresses(hre.network.name);
   await hre.run("verify:verify", {
-    address: "0x30157e46b919EEC3E5d46bDc17c360b8bb442C30",
+    address: "0xFA255938e6297d19Fd73E05400dF5f899614D788",
     constructorArguments: [
       vaultAddress,
       addresses.USDC,
