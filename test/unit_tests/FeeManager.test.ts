@@ -112,7 +112,8 @@ const deployVault = async (
   owner: Signer,
   shareFraccion = 1,
   usdc: Contract,
-  weth: Contract
+  weth: Contract,
+  vaultOwner: Signer
 ) => {
   const slot0 = await uniswapV3Pool.slot0();
   const tickSpacing = await uniswapV3Pool.tickSpacing();
@@ -128,7 +129,7 @@ const deployVault = async (
     ethers.utils.parseUnits("0.01", 18)
   );
 
-  const tx = await arrakisV2Factory.deployVault(
+  const tx = await arrakisV2Factory.connect(vaultOwner).deployVault(
     {
       feeTiers: [500],
       token0: addresses.USDC,
@@ -184,7 +185,7 @@ describe("FeeManager unit test", function () {
 
   let user: Signer;
   let user2: Signer;
-  let user3: Signer;
+  let owner: Signer;
   let user4: Signer;
   let userAddr: string;
   let userAddr2: string;
@@ -218,11 +219,11 @@ describe("FeeManager unit test", function () {
 
       addresses = getAddresses(hre.network.name);
 
-      [user, user2, user3, user4] = await ethers.getSigners();
+      [user, user2, owner, user4] = await ethers.getSigners();
 
       userAddr = await user.getAddress();
       userAddr2 = await user2.getAddress();
-      userAddr3 = await user3.getAddress();
+      userAddr3 = await owner.getAddress();
       userAddr4 = await user4.getAddress();
 
       arrakisV2Factory = (await ethers.getContract(
@@ -281,7 +282,7 @@ describe("FeeManager unit test", function () {
         ethers.utils.parseUnits("0.01", 18)
       );
 
-      const tx = await arrakisV2Factory.deployVault(
+      const tx = await arrakisV2Factory.connect(owner).deployVault(
         {
           feeTiers: [500],
           token0: addresses.USDC,
@@ -568,7 +569,7 @@ describe("FeeManager unit test", function () {
         arrakisV2
       );
       let prevBalanceUser3 = await usdc.balanceOf(userAddr3);
-      await feeManager.connect(user3).claimFees(userAddr3);
+      await feeManager.connect(owner).claimFees(userAddr3);
       let postBalanceUser3 = await usdc.balanceOf(userAddr3);
       expect(postBalanceUser3.sub(prevBalanceUser3)).to.be.equal(
         ethers.utils.parseUnits("12", 6)
@@ -588,7 +589,7 @@ describe("FeeManager unit test", function () {
         ethers.utils.parseUnits("3", 6)
       );
       prevBalanceUser3 = await usdc.balanceOf(userAddr3);
-      await feeManager.connect(user3).claimFees(userAddr3);
+      await feeManager.connect(owner).claimFees(userAddr3);
       postBalanceUser3 = await usdc.balanceOf(userAddr3);
       expect(postBalanceUser3.sub(prevBalanceUser3)).to.be.equal(
         ethers.utils.parseUnits("4", 6)
@@ -704,7 +705,7 @@ describe("FeeManager unit test", function () {
         arrakisV2
       );
       let prevBalanceUser3 = await usdc.balanceOf(userAddr3);
-      await feeManager.connect(user3).claimFees(userAddr3);
+      await feeManager.connect(owner).claimFees(userAddr3);
       let postBalanceUser3 = await usdc.balanceOf(userAddr3);
       expect(postBalanceUser3.sub(prevBalanceUser3)).to.be.closeTo(
         ethers.utils.parseUnits(String(12 + 12 * conversion), 6),
@@ -725,7 +726,7 @@ describe("FeeManager unit test", function () {
         ethers.utils.parseUnits(String(3 + 3 * conversion), 6)
       );
       prevBalanceUser3 = await usdc.balanceOf(userAddr3);
-      await feeManager.connect(user3).claimFees(userAddr3);
+      await feeManager.connect(owner).claimFees(userAddr3);
       postBalanceUser3 = await usdc.balanceOf(userAddr3);
       expect(postBalanceUser3.sub(prevBalanceUser3)).to.be.closeTo(
         ethers.utils.parseUnits(String(4 + 4 * conversion), 6),
@@ -744,7 +745,8 @@ describe("FeeManager unit test", function () {
         user,
         1000000,
         usdc,
-        wEth
+        wEth,
+        owner
       );
       await customVault.mint("1000000000000000000", userAddr2);
       await depositRewardsInVault(
@@ -807,7 +809,7 @@ describe("FeeManager unit test", function () {
         ethers.utils.parseUnits("0.000374", 6)
       );
       prevBalanceUser3 = await usdc.balanceOf(userAddr3);
-      await arrakisV2.connect(user3).burn("1", userAddr3);
+      await arrakisV2.connect(owner).burn("1", userAddr3);
       postBalanceUser3 = await usdc.balanceOf(userAddr3);
       expect(postBalanceUser3.sub(prevBalanceUser3)).to.be.equal(
         ethers.utils.parseUnits("0.000499", 6)

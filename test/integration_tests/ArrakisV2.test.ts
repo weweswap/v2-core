@@ -66,6 +66,7 @@ describe("Arrakis V2 integration test!!!", async function () {
 
   let user: Signer;
   let user2: Signer;
+  let owner: Signer;
   let userAddr: string;
   let arrakisV2Factory: ArrakisV2Factory;
   let vaultV2: ArrakisV2;
@@ -91,7 +92,7 @@ describe("Arrakis V2 integration test!!!", async function () {
       process.exit(1);
     }
 
-    [user, , , user2] = await ethers.getSigners();
+    [user, , owner, user2] = await ethers.getSigners();
 
     userAddr = await user.getAddress();
 
@@ -188,7 +189,7 @@ describe("Arrakis V2 integration test!!!", async function () {
       ethers.utils.parseUnits("1", 18)
     );
 
-    const tx = await arrakisV2Factory.deployVault(
+    const tx = await arrakisV2Factory.connect(owner).deployVault(
       {
         feeTiers: [500],
         token0: addresses.USDC,

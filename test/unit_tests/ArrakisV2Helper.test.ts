@@ -18,6 +18,7 @@ describe("ArrakisV2Helper functions unit test", function () {
   this.timeout(0);
 
   let user: Signer;
+  let owner: Signer;
   let userAddr: string;
   let arrakisV2Helper: ArrakisV2Helper;
   let uniswapV3Factory: IUniswapV3Factory;
@@ -46,7 +47,7 @@ describe("ArrakisV2Helper functions unit test", function () {
 
       addresses = getAddresses(hre.network.name);
 
-      [user, , ,] = await ethers.getSigners();
+      [user, , owner] = await ethers.getSigners();
 
       userAddr = await user.getAddress();
 
@@ -108,7 +109,7 @@ describe("ArrakisV2Helper functions unit test", function () {
         ethers.utils.parseUnits("1", 18)
       );
 
-      const tx = await arrakisV2Factory.deployVault(
+      const tx = await arrakisV2Factory.connect(owner).deployVault(
         {
           feeTiers: [500],
           token0: addresses.USDC,

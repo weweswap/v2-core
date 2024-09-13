@@ -21,6 +21,7 @@ describe("Rounding integration test", async function () {
   this.timeout(0);
 
   let user: Signer;
+  let owner: Signer;
   let userAddr: string;
   let arrakisV2Factory: ArrakisV2Factory;
   let vaultV2: ArrakisV2;
@@ -49,7 +50,7 @@ describe("Rounding integration test", async function () {
       process.exit(1);
     }
 
-    [user] = await ethers.getSigners();
+    [user, , owner] = await ethers.getSigners();
 
     userAddr = await user.getAddress();
 
@@ -179,7 +180,7 @@ describe("Rounding integration test", async function () {
       ethers.utils.parseUnits("1", 12)
     );
 
-    const tx = await arrakisV2Factory.deployVault(
+    const tx = await arrakisV2Factory.connect(owner).deployVault(
       {
         feeTiers: [500],
         token0: addresses.USDC,
