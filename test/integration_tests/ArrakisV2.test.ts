@@ -968,8 +968,6 @@ describe("Arrakis V2 integration test!!!", async function () {
     // #region do a swap to generate fees.
 
     for (let i = 0; i < 1; i++) {
-      // User 1 per loop 190
-      // User 2 per loop 64
       await generateFees(userAddr, wMatic, swapR, addresses, wEth, usdc);
     }
 

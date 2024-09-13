@@ -22,7 +22,7 @@ contract FeeManager is IFeeManager, Ownable {
     IQuoterV2 public immutable quoter;
     uint256 public accumulatedRewardsPerShare;
     mapping(address => uint256) public rewardDebt;
-    uint256 public constant REWARDS_PRECISION = 1e18;
+    uint256 public constant REWARDS_PRECISION = 1e24;
     uint24 public immutable feeTier;
 
     modifier onlyVault() {
