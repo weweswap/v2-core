@@ -66,6 +66,7 @@ describe("Arrakis V2 integration test!!!", async function () {
 
   let user: Signer;
   let user2: Signer;
+  let owner: Signer;
   let userAddr: string;
   let arrakisV2Factory: ArrakisV2Factory;
   let vaultV2: ArrakisV2;
@@ -91,7 +92,7 @@ describe("Arrakis V2 integration test!!!", async function () {
       process.exit(1);
     }
 
-    [user, , , user2] = await ethers.getSigners();
+    [user, , owner, user2] = await ethers.getSigners();
 
     userAddr = await user.getAddress();
 
@@ -188,7 +189,7 @@ describe("Arrakis V2 integration test!!!", async function () {
       ethers.utils.parseUnits("1", 18)
     );
 
-    const tx = await arrakisV2Factory.deployVault(
+    const tx = await arrakisV2Factory.connect(owner).deployVault(
       {
         feeTiers: [500],
         token0: addresses.USDC,
@@ -233,7 +234,6 @@ describe("Arrakis V2 integration test!!!", async function () {
       vaultV2.address,
       addresses.USDC,
       addresses.SwapRouter02,
-      addresses.QuoterV2,
       3000
     )) as IFeeManager;
 
@@ -968,8 +968,6 @@ describe("Arrakis V2 integration test!!!", async function () {
     // #region do a swap to generate fees.
 
     for (let i = 0; i < 1; i++) {
-      // User 1 per loop 190
-      // User 2 per loop 64
       await generateFees(userAddr, wMatic, swapR, addresses, wEth, usdc);
     }
 

@@ -33,6 +33,7 @@ contract ArrakisV2Factory is ArrakisV2FactoryStorage {
     /// @return vault the address of the Arrakis V2 vault instance created.
     function deployVault(InitializePayload calldata params_, bool isBeacon_)
         external
+        onlyOwner
         returns (address vault)
     {
         vault = _preDeploy(params_, isBeacon_);

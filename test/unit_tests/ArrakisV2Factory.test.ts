@@ -16,7 +16,6 @@ describe("Factory function unit test", function () {
   this.timeout(0);
 
   let user: Signer;
-  let user2: Signer;
   let userAddr: string;
   let arrakisV2Factory: ArrakisV2Factory;
   let uniswapV3Pool: IUniswapV3Pool;
@@ -33,7 +32,7 @@ describe("Factory function unit test", function () {
     addresses = getAddresses(hre.network.name);
     await deployments.fixture();
 
-    [user, user2, owner] = await ethers.getSigners();
+    [user, , owner] = await ethers.getSigners();
     userAddr = await user.getAddress();
 
     // const addr =
@@ -94,7 +93,7 @@ describe("Factory function unit test", function () {
       ethers.utils.parseUnits("1", 18)
     );
 
-    const tx = await arrakisV2Factory.deployVault(
+    const tx = await arrakisV2Factory.connect(owner).deployVault(
       {
         feeTiers: [500],
         token0: addresses.USDC,
@@ -148,7 +147,7 @@ describe("Factory function unit test", function () {
       ethers.utils.parseUnits("1", 18)
     );
 
-    await arrakisV2Factory.connect(user2).deployVault(
+    await arrakisV2Factory.connect(owner).deployVault(
       {
         feeTiers: [500],
         token0: addresses.USDC,
@@ -180,7 +179,7 @@ describe("Factory function unit test", function () {
       ethers.utils.parseUnits("1", 18)
     );
 
-    await arrakisV2Factory.connect(user2).deployVault(
+    await arrakisV2Factory.connect(owner).deployVault(
       {
         feeTiers: [500],
         token0: addresses.USDC,
@@ -199,7 +198,7 @@ describe("Factory function unit test", function () {
         .length
     ).to.be.eq(1);
 
-    await arrakisV2Factory.connect(user2).deployVault(
+    await arrakisV2Factory.connect(owner).deployVault(
       {
         feeTiers: [3000],
         token0: addresses.USDC,
@@ -240,7 +239,7 @@ describe("Factory function unit test", function () {
       ethers.utils.parseUnits("1", 18)
     );
 
-    const tx = await arrakisV2Factory.connect(user2).deployVault(
+    const tx = await arrakisV2Factory.connect(owner).deployVault(
       {
         feeTiers: [500],
         token0: addresses.USDC,
@@ -279,7 +278,7 @@ describe("Factory function unit test", function () {
       ethers.utils.parseUnits("1", 18)
     );
 
-    const tx = await arrakisV2Factory.connect(user2).deployVault(
+    const tx = await arrakisV2Factory.connect(owner).deployVault(
       {
         feeTiers: [500],
         token0: addresses.USDC,
@@ -318,7 +317,7 @@ describe("Factory function unit test", function () {
       ethers.utils.parseUnits("1", 18)
     );
 
-    const tx = await arrakisV2Factory.connect(user2).deployVault(
+    const tx = await arrakisV2Factory.connect(owner).deployVault(
       {
         feeTiers: [500],
         token0: addresses.USDC,
@@ -368,7 +367,7 @@ describe("Factory function unit test", function () {
       ethers.utils.parseUnits("1", 18)
     );
 
-    const tx = await arrakisV2Factory.connect(user2).deployVault(
+    const tx = await arrakisV2Factory.connect(owner).deployVault(
       {
         feeTiers: [500],
         token0: addresses.USDC,
@@ -453,7 +452,7 @@ describe("Factory function unit test", function () {
       ethers.utils.parseUnits("1", 18)
     );
 
-    const tx = await arrakisV2Factory.connect(user2).deployVault(
+    const tx = await arrakisV2Factory.connect(owner).deployVault(
       {
         feeTiers: [500],
         token0: addresses.USDC,

@@ -4,7 +4,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { getAddresses, Addresses } from "../src/addresses";
 import { sleep } from "../src/utils";
 
-const vaultAddress = "0xb13688c877268e32cc4584B6e06A3984d016dBB2"; // TODO: Automatize deploy vault
+const vaultAddress = "0x6bAffADA267Ef0FbdDEFc05592271bED9a0B4a5E"; // TODO: Automatize deploy vault
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   if (
@@ -30,13 +30,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { deployer } = await getNamedAccounts();
   await deploy("FeeManager", {
     from: deployer,
-    args: [
-      vaultAddress,
-      addresses.USDC,
-      addresses.SwapRouter02,
-      addresses.QuoterV2,
-      10000,
-    ],
+    args: [vaultAddress, addresses.USDC, addresses.SwapRouter02, 10000],
     log: hre.network.name != "hardhat" ? true : false,
   });
 };

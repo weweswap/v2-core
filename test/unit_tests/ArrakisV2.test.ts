@@ -40,7 +40,6 @@ describe("ArrakisV2 functions unit test", function () {
       arrakisV2.address,
       addresses.USDC,
       addresses.SwapRouter02,
-      addresses.QuoterV2,
       3000
     );
 

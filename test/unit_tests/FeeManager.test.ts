@@ -17,6 +17,50 @@ import {
 import { getAddresses, Addresses } from "../../src/addresses";
 const { ethers, deployments } = hre;
 
+async function increaseBalance(address: string, amount: string) {
+  const balance = ethers.utils.hexlify(
+    ethers.utils.parseUnits(amount, "ether")
+  ); // Convierte a hexadecimal correctamente
+  await hre.network.provider.send("hardhat_setBalance", [address, balance]);
+}
+
+async function generateFees(
+  userAddr: string,
+  wMatic: Contract,
+  swapR: Contract,
+  addresses: any,
+  wEth: Contract,
+  usdc: Contract
+) {
+  await increaseBalance(userAddr, "2000"); // 10,000 ETH/MATIC
+  await wMatic.deposit({ value: ethers.utils.parseUnits("1999", 18) });
+  await wMatic.approve(swapR.address, ethers.utils.parseUnits("1999", 18));
+
+  await swapR.exactInputSingle({
+    tokenIn: addresses.WMATIC,
+    tokenOut: addresses.WETH,
+    fee: 500,
+    recipient: userAddr,
+    deadline: ethers.constants.MaxUint256,
+    amountIn: ethers.utils.parseUnits("1999", 18),
+    amountOutMinimum: ethers.constants.Zero,
+    sqrtPriceLimitX96: 0,
+  });
+
+  await wEth.approve(swapR.address, ethers.utils.parseEther("0.0019"));
+
+  await swapR.exactInputSingle({
+    tokenIn: wEth.address,
+    tokenOut: usdc.address,
+    fee: 500,
+    recipient: userAddr,
+    deadline: ethers.constants.MaxUint256,
+    amountIn: ethers.utils.parseEther("0.0019"),
+    amountOutMinimum: ethers.constants.Zero,
+    sqrtPriceLimitX96: 0,
+  });
+}
+
 // Only acepts ERC20
 const depositRewardsInVault = async (
   weth: Contract,
@@ -68,7 +112,8 @@ const deployVault = async (
   owner: Signer,
   shareFraccion = 1,
   usdc: Contract,
-  weth: Contract
+  weth: Contract,
+  vaultOwner: Signer
 ) => {
   const slot0 = await uniswapV3Pool.slot0();
   const tickSpacing = await uniswapV3Pool.tickSpacing();
@@ -84,7 +129,7 @@ const deployVault = async (
     ethers.utils.parseUnits("0.01", 18)
   );
 
-  const tx = await arrakisV2Factory.deployVault(
+  const tx = await arrakisV2Factory.connect(vaultOwner).deployVault(
     {
       feeTiers: [500],
       token0: addresses.USDC,
@@ -114,7 +159,6 @@ const deployVault = async (
     arrakisV2.address,
     addresses.USDC,
     addresses.SwapRouter02,
-    addresses.QuoterV2,
     3000
   )) as FeeManager;
 
@@ -140,7 +184,7 @@ describe("FeeManager unit test", function () {
 
   let user: Signer;
   let user2: Signer;
-  let user3: Signer;
+  let owner: Signer;
   let user4: Signer;
   let userAddr: string;
   let userAddr2: string;
@@ -174,11 +218,11 @@ describe("FeeManager unit test", function () {
 
       addresses = getAddresses(hre.network.name);
 
-      [user, user2, user3, user4] = await ethers.getSigners();
+      [user, user2, owner, user4] = await ethers.getSigners();
 
       userAddr = await user.getAddress();
       userAddr2 = await user2.getAddress();
-      userAddr3 = await user3.getAddress();
+      userAddr3 = await owner.getAddress();
       userAddr4 = await user4.getAddress();
 
       arrakisV2Factory = (await ethers.getContract(
@@ -237,7 +281,7 @@ describe("FeeManager unit test", function () {
         ethers.utils.parseUnits("0.01", 18)
       );
 
-      const tx = await arrakisV2Factory.deployVault(
+      const tx = await arrakisV2Factory.connect(owner).deployVault(
         {
           feeTiers: [500],
           token0: addresses.USDC,
@@ -266,7 +310,6 @@ describe("FeeManager unit test", function () {
         arrakisV2.address,
         addresses.USDC,
         addresses.SwapRouter02,
-        addresses.QuoterV2,
         3000
       )) as FeeManager;
 
@@ -293,8 +336,6 @@ describe("FeeManager unit test", function () {
 
       await wMatic.approve(swapRouter.address, ethers.constants.MaxUint256);
 
-      // #region swap wrapped matic for wrapped eth.
-
       await swapRouter.exactInputSingle({
         tokenIn: addresses.WMATIC,
         tokenOut: addresses.WETH,
@@ -305,10 +346,6 @@ describe("FeeManager unit test", function () {
         amountOutMinimum: ethers.constants.Zero,
         sqrtPriceLimitX96: 0,
       });
-
-      // #endregion swap wrapped matic for wrapped eth.
-
-      // #region swap wrapped matic for usdc.
 
       await wMatic.deposit({ value: ethers.utils.parseUnits("2000", 18) });
 
@@ -323,23 +360,8 @@ describe("FeeManager unit test", function () {
         sqrtPriceLimitX96: 0,
       });
 
-      // #endregion swap wrapped matic for usdc.
-
-      // #region mint arrakis token by Lp.
-
       await wEth.approve(arrakisV2.address, ethers.constants.MaxUint256);
       await usdc.approve(arrakisV2.address, ethers.constants.MaxUint256);
-
-      // #endregion approve weth and usdc token to vault.
-
-      // #region user balance of weth and usdc.
-
-      // const wethBalance = await wEth.balanceOf(userAddr);
-      // const usdcBalance = await usdc.balanceOf(userAddr);
-
-      // #endregion user balance of weth and usdc.
-
-      // #region mint arrakis vault V2 token.
 
       const result2 = await arrakisV2Resolver.getMintAmounts(
         arrakisV2.address,
@@ -352,9 +374,6 @@ describe("FeeManager unit test", function () {
       const balance = await arrakisV2.balanceOf(userAddr2);
 
       expect(balance).to.be.eq(result2.mintAmount);
-
-      // #endregion mint arrakis token by Lp.
-      // #region rebalance to deposit user token into the uniswap v3 pool.
 
       const rebalanceParams = await arrakisV2Resolver.standardRebalance(
         [{ range: { lowerTick, upperTick, feeTier: 500 }, weight: 10000 }],
@@ -548,7 +567,7 @@ describe("FeeManager unit test", function () {
         arrakisV2
       );
       let prevBalanceUser3 = await usdc.balanceOf(userAddr3);
-      await feeManager.connect(user3).claimFees(userAddr3);
+      await feeManager.connect(owner).claimFees(userAddr3);
       let postBalanceUser3 = await usdc.balanceOf(userAddr3);
       expect(postBalanceUser3.sub(prevBalanceUser3)).to.be.equal(
         ethers.utils.parseUnits("12", 6)
@@ -568,7 +587,7 @@ describe("FeeManager unit test", function () {
         ethers.utils.parseUnits("3", 6)
       );
       prevBalanceUser3 = await usdc.balanceOf(userAddr3);
-      await feeManager.connect(user3).claimFees(userAddr3);
+      await feeManager.connect(owner).claimFees(userAddr3);
       postBalanceUser3 = await usdc.balanceOf(userAddr3);
       expect(postBalanceUser3.sub(prevBalanceUser3)).to.be.equal(
         ethers.utils.parseUnits("4", 6)
@@ -684,7 +703,7 @@ describe("FeeManager unit test", function () {
         arrakisV2
       );
       let prevBalanceUser3 = await usdc.balanceOf(userAddr3);
-      await feeManager.connect(user3).claimFees(userAddr3);
+      await feeManager.connect(owner).claimFees(userAddr3);
       let postBalanceUser3 = await usdc.balanceOf(userAddr3);
       expect(postBalanceUser3.sub(prevBalanceUser3)).to.be.closeTo(
         ethers.utils.parseUnits(String(12 + 12 * conversion), 6),
@@ -705,7 +724,7 @@ describe("FeeManager unit test", function () {
         ethers.utils.parseUnits(String(3 + 3 * conversion), 6)
       );
       prevBalanceUser3 = await usdc.balanceOf(userAddr3);
-      await feeManager.connect(user3).claimFees(userAddr3);
+      await feeManager.connect(owner).claimFees(userAddr3);
       postBalanceUser3 = await usdc.balanceOf(userAddr3);
       expect(postBalanceUser3.sub(prevBalanceUser3)).to.be.closeTo(
         ethers.utils.parseUnits(String(4 + 4 * conversion), 6),
@@ -724,7 +743,8 @@ describe("FeeManager unit test", function () {
         user,
         1000000,
         usdc,
-        wEth
+        wEth,
+        owner
       );
       await customVault.mint("1000000000000000000", userAddr2);
       await depositRewardsInVault(
@@ -741,6 +761,56 @@ describe("FeeManager unit test", function () {
       expect(postBalanceUser2.sub(prevBalanceUser2)).to.be.closeTo(
         ethers.utils.parseUnits("0.000001", 6),
         0
+      );
+    });
+  });
+
+  describe("Collect with mint and burn", async () => {
+    it("#0: Correct fee distribution according to mint strategy", async () => {
+      // Fee manager balance
+      for (let i = 0; i < 10; i++) {
+        // Reward 273
+        await generateFees(userAddr, wMatic, swapRouter, addresses, wEth, usdc);
+      }
+      await arrakisV2.mint("4000000000000000000", userAddr3);
+      for (let i = 0; i < 5; i++) {
+        // Reward 623
+        await generateFees(userAddr, wMatic, swapRouter, addresses, wEth, usdc);
+      }
+      await arrakisV2.collectFees();
+      let prevBalanceUser2 = await usdc.balanceOf(userAddr2);
+      await arrakisV2.mint("1", userAddr2);
+      let postBalanceUser2 = await usdc.balanceOf(userAddr2);
+      expect(postBalanceUser2.sub(prevBalanceUser2)).to.be.equal(
+        ethers.utils.parseUnits("0.000397", 6)
+      );
+      for (let i = 0; i < 10; i++) {
+        // Reward 1247
+        await generateFees(userAddr, wMatic, swapRouter, addresses, wEth, usdc);
+      }
+      await arrakisV2.collectFees();
+      let prevBalanceUser3 = await usdc.balanceOf(userAddr3);
+      await arrakisV2.mint("1", userAddr3);
+      let postBalanceUser3 = await usdc.balanceOf(userAddr3);
+      expect(postBalanceUser3.sub(prevBalanceUser3)).to.be.equal(
+        ethers.utils.parseUnits("0.001495", 6)
+      );
+      for (let i = 0; i < 5; i++) {
+        // Reward 623
+        await generateFees(userAddr, wMatic, swapRouter, addresses, wEth, usdc);
+      }
+      await arrakisV2.collectFees();
+      prevBalanceUser2 = await usdc.balanceOf(userAddr2);
+      await arrakisV2.connect(user2).burn("1", userAddr2);
+      postBalanceUser2 = await usdc.balanceOf(userAddr2);
+      expect(postBalanceUser2.sub(prevBalanceUser2)).to.be.equal(
+        ethers.utils.parseUnits("0.000374", 6)
+      );
+      prevBalanceUser3 = await usdc.balanceOf(userAddr3);
+      await arrakisV2.connect(owner).burn("1", userAddr3);
+      postBalanceUser3 = await usdc.balanceOf(userAddr3);
+      expect(postBalanceUser3.sub(prevBalanceUser3)).to.be.equal(
+        ethers.utils.parseUnits("0.000499", 6)
       );
     });
   });

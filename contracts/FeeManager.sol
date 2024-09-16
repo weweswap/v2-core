@@ -11,7 +11,6 @@ import {IV3SwapRouter} from "./univ3-0.8/IV3SwapRouter.sol";
 import {ISwapRouter02} from "./univ3-0.8/ISwapRouter02.sol";
 import {TransferHelper} from "./univ3-0.8/TransferHelper.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IQuoterV2} from "@uniswap/v3-periphery/contracts/interfaces/IQuoterV2.sol";
 
 contract FeeManager is IFeeManager, Ownable {
     using SafeERC20 for IERC20;
@@ -19,10 +18,9 @@ contract FeeManager is IFeeManager, Ownable {
     IERC20 public immutable vault;
     IERC20 public immutable usdc;
     ISwapRouter02 public immutable router;
-    IQuoterV2 public immutable quoter;
     uint256 public accumulatedRewardsPerShare;
     mapping(address => uint256) public rewardDebt;
-    uint256 public constant REWARDS_PRECISION = 1e18;
+    uint256 public constant REWARDS_PRECISION = 1e24;
     uint24 public immutable feeTier;
 
     modifier onlyVault() {
@@ -34,12 +32,10 @@ contract FeeManager is IFeeManager, Ownable {
         address vault_,
         address usdc_,
         address uniSwapRouter_,
-        address quoter_,
         uint24 feeTier_
     ) {
         require(vault_ != address(0), "FeeManager: Invalid vault_ address");
         require(usdc_ != address(0), "FeeManager: Invalid usdc_ address");
-        require(quoter_ != address(0), "FeeManager: Invalid quoter_ address");
         require(
             uniSwapRouter_ != address(0),
             "FeeManager: uniSwapRouter_ address"
@@ -48,7 +44,6 @@ contract FeeManager is IFeeManager, Ownable {
         vault = IERC20(vault_);
         usdc = IERC20(usdc_);
         router = ISwapRouter02(uniSwapRouter_);
-        quoter = IQuoterV2(quoter_);
 
         transferOwnership(msg.sender);
     }
@@ -121,19 +116,6 @@ contract FeeManager is IFeeManager, Ownable {
 
         TransferHelper.safeApprove(token, address(router), feesToken);
 
-        IQuoterV2.QuoteExactInputSingleParams memory paramsQuote = IQuoterV2.QuoteExactInputSingleParams({
-            tokenIn: address(token),
-            tokenOut: address(usdc),
-            amountIn: feesToken,
-            fee: feeTier,
-            sqrtPriceLimitX96: 0
-        });
-
-        (uint256 amountOut,,,) = quoter.quoteExactInputSingle(paramsQuote);
-
-        uint256 slippageTolerance = 95;
-        uint256 amountOutMinimum = FullMath.mulDiv(amountOut, slippageTolerance, 100);
-
         IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
             .ExactInputSingleParams({
                 tokenIn: address(token),
@@ -141,7 +123,7 @@ contract FeeManager is IFeeManager, Ownable {
                 fee: feeTier,
                 recipient: address(this),
                 amountIn: feesToken,
-                amountOutMinimum: amountOutMinimum,
+                amountOutMinimum: 0,
                 sqrtPriceLimitX96: 0
             });
 
