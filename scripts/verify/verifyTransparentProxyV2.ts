@@ -1350,18 +1350,18 @@ const ArrakisVaultABI = [
 async function main() {
   const iface = new ethers.utils.Interface(ArrakisVaultABI);
 
-//   [
-//     [
-//         "10000"
-//     ],
-//     "0x6b9bb36519538e0c073894e964e90172e1c0b41f",
-//     "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
-//     "0x627e03ddcb7186cd01364d00c489f701983aa9ae",
-//     "7979000000000000000000",
-//     "1000000",
-//     "0x627e03ddcb7186cd01364d00c489f701983aa9ae",
-//     []
-// ]
+  //   [
+  //     [
+  //         "10000"
+  //     ],
+  //     "0x6b9bb36519538e0c073894e964e90172e1c0b41f",
+  //     "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+  //     "0x627e03ddcb7186cd01364d00c489f701983aa9ae",
+  //     "7979000000000000000000",
+  //     "1000000",
+  //     "0x627e03ddcb7186cd01364d00c489f701983aa9ae",
+  //     []
+  // ]
 
   // const numVaults = 0;
   const name = "WEWESwap Vault V1 WEWE/USDC";

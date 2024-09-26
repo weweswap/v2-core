@@ -1,0 +1,54 @@
+{
+  "address": "0x32db7f9209ee069B122F2A23012Ca9F11C9409c0",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "name",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x43ae814a04a041b1c9a33070597db45bde876ff6bc2d1f76cb062d4a9c924419",
+  "receipt": {
+    "to": null,
+    "from": "0x627e03Ddcb7186cD01364d00c489f701983aa9Ae",
+    "contractAddress": "0x32db7f9209ee069B122F2A23012Ca9F11C9409c0",
+    "transactionIndex": 42,
+    "gasUsed": "104217",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0xd8e955b75f39989f76613eb744d309b4a069de687b344f68453ca7214b71c525",
+    "transactionHash": "0x43ae814a04a041b1c9a33070597db45bde876ff6bc2d1f76cb062d4a9c924419",
+    "logs": [],
+    "blockNumber": 20290506,
+    "cumulativeGasUsed": "8920930",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "numDeployments": 1,
+  "solcInputHash": "6135afee21c42705097c5b52db6c6bb8",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.13+commit.abaa5c0e\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"name\":\"name\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"pure\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/__mocks__/MockTransparentImplementation.sol\":\"MockTransparentImplementation\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":50},\"remappings\":[]},\"sources\":{\"contracts/__mocks__/MockTransparentImplementation.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.13;\\n\\ncontract MockTransparentImplementation {\\n    function name() external pure returns (string memory) {\\n        return \\\"Mock contract\\\";\\n    }\\n}\\n\",\"keccak256\":\"0x0fc352640fd9ca041b2b3533feabc8c3c9216f279d7c2dd2f31849533d19ed58\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x608060405234801561001057600080fd5b5060eb8061001f6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c806306fdde0314602d575b600080fd5b604080518082018252600d81526c135bd8dac818dbdb9d1c9858dd609a1b60208201529051605a91906063565b60405180910390f35b600060208083528351808285015260005b81811015608e578581018301518582016040015282016074565b81811115609f576000604083870101525b50601f01601f191692909201604001939250505056fea2646970667358221220dd2cee3460573fa019a599b0d6c2aa334c882b4e47945e2a11a9c3daf83534ab64736f6c634300080d0033",
+  "deployedBytecode": "0x6080604052348015600f57600080fd5b506004361060285760003560e01c806306fdde0314602d575b600080fd5b604080518082018252600d81526c135bd8dac818dbdb9d1c9858dd609a1b60208201529051605a91906063565b60405180910390f35b600060208083528351808285015260005b81811015608e578581018301518582016040015282016074565b81811115609f576000604083870101525b50601f01601f191692909201604001939250505056fea2646970667358221220dd2cee3460573fa019a599b0d6c2aa334c882b4e47945e2a11a9c3daf83534ab64736f6c634300080d0033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {},
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": null
+  }
+}

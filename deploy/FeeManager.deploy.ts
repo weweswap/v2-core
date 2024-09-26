@@ -4,7 +4,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { getAddresses, Addresses } from "../src/addresses";
 import { sleep } from "../src/utils";
 
-const vaultAddress = "0x6bAffADA267Ef0FbdDEFc05592271bED9a0B4a5E"; // TODO: Automatize deploy vault
+const vaultAddress = "0x3Fd7957D9F98D46c755685B67dFD8505468A7Cb6"; // TODO: Automatize deploy vault
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   if (
@@ -14,7 +14,6 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     hre.network.name === "optimism" ||
     hre.network.name === "arbitrum" ||
     hre.network.name === "binance" ||
-    hre.network.name === "base" ||
     hre.network.name === "base_goerli" ||
     hre.network.name === "sepolia" ||
     hre.network.name === "gnosis"
@@ -45,7 +44,6 @@ func.skip = async (hre: HardhatRuntimeEnvironment) => {
     hre.network.name === "optimism" ||
     hre.network.name === "arbitrum" ||
     hre.network.name === "binance" ||
-    hre.network.name === "base" ||
     hre.network.name === "base_goerli" ||
     hre.network.name === "sepolia" ||
     hre.network.name === "gnosis";
