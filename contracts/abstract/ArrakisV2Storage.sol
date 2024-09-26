@@ -421,4 +421,28 @@ abstract contract ArrakisV2Storage is
         managerBalance1 += (fee1_ * mManagerFeeBPS) / hundredPercent;
     }
     // #endregion internal functions
+
+    function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
+        if (from != address(0)) {
+            feeManager.claimFees(from);
+            feeManager.setRewardDebt(
+                from,
+                FullMath.mulDiv(
+                    balanceOf(from) - amount,
+                    feeManager.accumulatedRewardsPerShare(),
+                    feeManager.REWARDS_PRECISION()
+                )
+            );
+        }
+        if (to != address(0)) {
+            feeManager.setRewardDebt(
+                to,
+                FullMath.mulDiv(
+                    amount,
+                    feeManager.accumulatedRewardsPerShare(),
+                    feeManager.REWARDS_PRECISION()
+                )
+            );
+        }
+    }
 }
