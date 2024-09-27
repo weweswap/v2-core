@@ -1,6 +1,7 @@
 import hre, { ethers } from "hardhat";
 
-const ArrakisVaultABI = [
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const ArrakisVaultAbi = [
   {
     inputs: [
       {
@@ -1348,7 +1349,7 @@ const ArrakisVaultABI = [
 ];
 
 async function main() {
-  const iface = new ethers.utils.Interface(ArrakisVaultABI);
+  const iface = new ethers.utils.Interface(ArrakisVaultAbi);
 
   //   [
   //     [
@@ -1372,7 +1373,7 @@ async function main() {
     token0: "0x6b9bb36519538e0c073894e964e90172e1c0b41f",
     token1: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
     owner: "0x627e03ddcb7186cd01364d00c489f701983aa9ae",
-    init0: "7979000000000000000000",
+    init0: "8300000000000000000000",
     init1: "1000000",
     manager: "0x627e03ddcb7186cd01364d00c489f701983aa9ae",
     routers: [],
@@ -1380,10 +1381,10 @@ async function main() {
   const data = iface.encodeFunctionData("initialize", [name, symbol, param]);
   console.log("data", data);
   await hre.run("verify:verify", {
-    address: "0x6bAffADA267Ef0FbdDEFc05592271bED9a0B4a5E",
+    address: "0x3Fd7957D9F98D46c755685B67dFD8505468A7Cb6",
     constructorArguments: [
-      "0xAE3C7554F53D58ae301d2a66dF352A5936B19372", // GET FROM BEACON DEPLOY
-      "0x27CaAE96101c86E10aB85C393aE236C895C464aF", // PROXY NOT IMPLEMENTATION
+      "0xc9cd7F3B563956c628c3b313eE25FedCE0bC9F41", // GET FROM BEACON DEPLOY
+      // "0x27CaAE96101c86E10aB85C393aE236C895C464aF", // PROXY NOT IMPLEMENTATION
       data,
     ], // Implementation, owne
   });
