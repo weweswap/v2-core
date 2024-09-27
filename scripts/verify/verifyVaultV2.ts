@@ -5,7 +5,7 @@ async function main() {
   const addresses: Addresses = getAddresses(hre.network.name);
 
   await hre.run("verify:verify", {
-    address: "0xAE3C7554F53D58ae301d2a66dF352A5936B19372",
+    address: "0x4d1D8B56EBeD04BC71203D47aED0122DD26FC642",
     constructorArguments: [addresses.UniswapV3Factory],
     // other args
     libraries: {

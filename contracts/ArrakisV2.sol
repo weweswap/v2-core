@@ -65,7 +65,6 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         bool isTotalSupplyGtZero = ts > 0;
 
         collectFees();
-        feeManager.claimFees(receiver_);
 
         if (isTotalSupplyGtZero) {
             (amount0, amount1) = UnderlyingHelper.totalUnderlyingForMint(
@@ -118,14 +117,6 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         }
 
         _mint(receiver_, mintAmount_);
-        feeManager.setRewardDebt(
-            receiver_,
-            FullMath.mulDiv(
-                balanceOf(receiver_),
-                feeManager.accumulatedRewardsPerShare(),
-                feeManager.REWARDS_PRECISION()
-            )
-        );
 
         // transfer amounts owed to contract
         if (amount0 > 0) {
@@ -182,18 +173,8 @@ contract ArrakisV2 is IUniswapV3MintCallback, ArrakisV2Storage {
         require(ts > 0, "TS");
 
         collectFees();
-        feeManager.claimFees(msg.sender);
 
         _burn(msg.sender, burnAmount_);
-
-        feeManager.setRewardDebt(
-            msg.sender,
-            FullMath.mulDiv(
-                balanceOf(msg.sender),
-                feeManager.accumulatedRewardsPerShare(),
-                feeManager.REWARDS_PRECISION()
-            )
-        );
 
         Withdraw memory total;
         for (uint256 i; i < _ranges.length; i++) {

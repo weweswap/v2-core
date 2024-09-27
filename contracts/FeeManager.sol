@@ -130,8 +130,6 @@ contract FeeManager is IFeeManager, Ownable {
         feesUSDC = router.exactInputSingle(params);
     }
 
-    /// @dev This function wraps the _applyFees to use only one token without
-    /// breaking the current logic of Arrakis
     function _convertFeesToUSDC(
         address token0,
         uint256 fee0,

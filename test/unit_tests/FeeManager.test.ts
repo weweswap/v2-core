@@ -593,6 +593,86 @@ describe("FeeManager unit test", function () {
         ethers.utils.parseUnits("4", 6)
       );
     });
+    it("#4: Prevent double claim caused by transfer and check algorithm after transfer", async () => {
+      await arrakisV2.collectFees(); // Claim fees to clean pending fees derived from mint
+      await feeManager.connect(user2).claimFees(userAddr2); // Claim fees to clean pending fees derived from mint
+      await depositRewardsInVault(
+        wEth,
+        ethers.utils.parseUnits("0", 18),
+        usdc,
+        ethers.utils.parseUnits("10", 6),
+        feeManager,
+        arrakisV2
+      );
+      await arrakisV2.mint("4000000000000000000", userAddr3);
+      await depositRewardsInVault(
+        wEth,
+        ethers.utils.parseUnits("0", 18),
+        usdc,
+        ethers.utils.parseUnits("5", 6),
+        feeManager,
+        arrakisV2
+      );
+      let prevBalanceUser3 = await usdc.balanceOf(userAddr3);
+      await feeManager.connect(owner).claimFees(userAddr3);
+      let postBalanceUser3 = await usdc.balanceOf(userAddr3);
+      expect(postBalanceUser3.sub(prevBalanceUser3)).to.be.equal(
+        ethers.utils.parseUnits("4", 6)
+      );
+      await depositRewardsInVault(
+        wEth,
+        ethers.utils.parseUnits("0", 18),
+        usdc,
+        ethers.utils.parseUnits("25", 6),
+        feeManager,
+        arrakisV2
+      );
+      let prevBalanceUser4 = await usdc.balanceOf(userAddr4);
+      prevBalanceUser3 = await usdc.balanceOf(userAddr3);
+      await arrakisV2.connect(owner).transfer(userAddr4, "2000000000000000000");
+      await feeManager.connect(user4).claimFees(userAddr4);
+      let postBalanceUser4 = await usdc.balanceOf(userAddr4);
+      postBalanceUser3 = await usdc.balanceOf(userAddr3);
+      expect(postBalanceUser4.sub(prevBalanceUser4)).to.be.equal(
+        ethers.utils.parseUnits("0", 6)
+      );
+      expect(postBalanceUser3.sub(prevBalanceUser3)).to.be.equal(
+        ethers.utils.parseUnits("20", 6)
+      );
+      prevBalanceUser3 = await usdc.balanceOf(userAddr3);
+      await feeManager.connect(owner).claimFees(userAddr3);
+      postBalanceUser3 = await usdc.balanceOf(userAddr3);
+      expect(postBalanceUser3.sub(prevBalanceUser3)).to.be.equal(
+        ethers.utils.parseUnits("0", 6)
+      );
+      await feeManager.connect(user2).claimFees(userAddr2);
+      await depositRewardsInVault(
+        wEth,
+        ethers.utils.parseUnits("0", 18),
+        usdc,
+        ethers.utils.parseUnits("5", 6),
+        feeManager,
+        arrakisV2
+      );
+      prevBalanceUser3 = await usdc.balanceOf(userAddr3);
+      await feeManager.connect(owner).claimFees(userAddr3);
+      postBalanceUser3 = await usdc.balanceOf(userAddr3);
+      expect(postBalanceUser3.sub(prevBalanceUser3)).to.be.equal(
+        ethers.utils.parseUnits("2", 6)
+      );
+      prevBalanceUser4 = await usdc.balanceOf(userAddr4);
+      await feeManager.connect(owner).claimFees(userAddr4);
+      postBalanceUser4 = await usdc.balanceOf(userAddr4);
+      expect(postBalanceUser4.sub(prevBalanceUser4)).to.be.equal(
+        ethers.utils.parseUnits("2", 6)
+      );
+      const prevBalanceUser2 = await usdc.balanceOf(userAddr2);
+      await feeManager.connect(user2).claimFees(userAddr2);
+      const postBalanceUser2 = await usdc.balanceOf(userAddr2);
+      expect(postBalanceUser2.sub(prevBalanceUser2)).to.be.equal(
+        ethers.utils.parseUnits("1", 6)
+      );
+    });
   });
 
   describe("Dual side fees", async () => {

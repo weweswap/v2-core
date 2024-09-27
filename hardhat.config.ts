@@ -44,7 +44,7 @@ const config: HardhatUserConfig = {
         network: "base",
         chainId: 8453,
         urls: {
-          apiURL: "https://base.blockscout.com/api",
+          apiURL: "https://api.basescan.org/api",
           browserURL: "https://basescan.org",
         },
       },
