@@ -4,8 +4,6 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { getAddresses, Addresses } from "../src/addresses";
 import { sleep } from "../src/utils";
 
-const vaultAddress = "0x3Fd7957D9F98D46c755685B67dFD8505468A7Cb6"; // TODO: Automatize deploy vault
-
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   if (
     hre.network.name === "mainnet" ||
@@ -14,13 +12,12 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     hre.network.name === "optimism" ||
     hre.network.name === "arbitrum" ||
     hre.network.name === "binance" ||
-    hre.network.name === "base" ||
     hre.network.name === "base_goerli" ||
     hre.network.name === "sepolia" ||
     hre.network.name === "gnosis"
   ) {
     console.log(
-      `Deploying FeeManager to ${hre.network.name}. Hit ctrl + c to abort`
+      `Deploying ZapKyber to ${hre.network.name}. Hit ctrl + c to abort`
     );
     await sleep(10000);
   }
@@ -28,9 +25,9 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const addresses: Addresses = getAddresses(hre.network.name);
   const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
-  await deploy("FeeManager", {
+  await deploy("ZapKyber", {
     from: deployer,
-    args: [vaultAddress, addresses.USDC, addresses.SwapRouter02, 10000],
+    args: [addresses.kyberAggregator],
     log: hre.network.name != "hardhat" ? true : false,
   });
 };
@@ -45,10 +42,9 @@ func.skip = async (hre: HardhatRuntimeEnvironment) => {
     hre.network.name === "optimism" ||
     hre.network.name === "arbitrum" ||
     hre.network.name === "binance" ||
-    hre.network.name === "base" ||
     hre.network.name === "base_goerli" ||
     hre.network.name === "sepolia" ||
     hre.network.name === "gnosis";
   return shouldSkip ? true : false;
 };
-func.tags = ["FeeManager"];
+func.tags = ["ZapKyber"];
