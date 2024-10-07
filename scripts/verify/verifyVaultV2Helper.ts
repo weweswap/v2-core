@@ -7,7 +7,6 @@ async function main() {
   await hre.run("verify:verify", {
     address: (await hre.ethers.getContract("ArrakisV2Helper")).address,
     constructorArguments: [addresses.UniswapV3Factory],
-    // other args
     libraries: {
       Underlying: (await hre.ethers.getContract("Underlying")).address,
     },
