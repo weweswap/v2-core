@@ -15,6 +15,7 @@ import {
   ManagerProxyMock,
 } from "../../typechain";
 import { getAddresses, Addresses } from "../../src/addresses";
+
 const { ethers, deployments } = hre;
 
 async function increaseBalance(address: string, amount: string) {
@@ -113,7 +114,8 @@ const deployVault = async (
   shareFraccion = 1,
   usdc: Contract,
   weth: Contract,
-  vaultOwner: Signer
+  vaultOwner: Signer,
+  chaos: Contract
 ) => {
   const slot0 = await uniswapV3Pool.slot0();
   const tickSpacing = await uniswapV3Pool.tickSpacing();
@@ -158,6 +160,7 @@ const deployVault = async (
   const feeManager = (await feeManagerFactory.deploy(
     arrakisV2.address,
     addresses.USDC,
+    chaos.address,
     addresses.SwapRouter02,
     3000
   )) as FeeManager;
@@ -201,6 +204,7 @@ describe("FeeManager unit test", function () {
   let feeManager: FeeManager;
   let wEth: Contract;
   let usdc: Contract;
+  let chaos: Contract;
   let wMatic: Contract;
   let lowerTick: number;
   let upperTick: number;
@@ -305,13 +309,22 @@ describe("FeeManager unit test", function () {
         user
       )) as ArrakisV2;
 
+      const chaosTokenFactory = await ethers.getContractFactory("MockERC20");
+      chaos = await chaosTokenFactory.deploy();
       const feeManagerFactory = await ethers.getContractFactory("FeeManager");
       feeManager = (await feeManagerFactory.deploy(
         arrakisV2.address,
         addresses.USDC,
+        chaos.address,
         addresses.SwapRouter02,
         3000
       )) as FeeManager;
+
+      await chaos.transfer(
+        feeManager.address,
+        ethers.utils.parseUnits("10000")
+      );
+      await feeManager.setRate(100);
 
       arrakisV2.connect(user).setFeeManager(feeManager.address);
 
@@ -424,6 +437,36 @@ describe("FeeManager unit test", function () {
   );
 
   describe("Single side fees", () => {
+    it("#0: Constructor validations", async () => {
+      const feeManagerFactory = await ethers.getContractFactory("FeeManager");
+      await expect(
+        feeManagerFactory.deploy(
+          ethers.constants.AddressZero,
+          usdc.address,
+          chaos.address,
+          swapRouter.address,
+          3000
+        )
+      ).to.be.revertedWith("FeeManager: Invalid vault_ address");
+      await expect(
+        feeManagerFactory.deploy(
+          arrakisV2.address,
+          ethers.constants.AddressZero,
+          chaos.address,
+          swapRouter.address,
+          3000
+        )
+      ).to.be.revertedWith("FeeManager: Invalid usdc_ address");
+      await expect(
+        feeManagerFactory.deploy(
+          arrakisV2.address,
+          usdc.address,
+          chaos.address,
+          ethers.constants.AddressZero,
+          3000
+        )
+      ).to.be.revertedWith("FeeManager: uniSwapRouter_ address");
+    });
     it("#0: Get 100% when your are alone in the vault", async () => {
       await wEth.approve(arrakisV2.address, ethers.constants.MaxUint256);
       await usdc.approve(arrakisV2.address, ethers.constants.MaxUint256);
@@ -553,10 +596,21 @@ describe("FeeManager unit test", function () {
         arrakisV2
       );
       let prevBalanceUser2 = await usdc.balanceOf(userAddr2);
-      await feeManager.connect(user2).claimFees(userAddr2);
+      let prevBalanceUserChaos2 = await chaos.balanceOf(userAddr2);
+      await expect(feeManager.connect(user2).claimFees(userAddr2))
+        .to.emit(feeManager, "RewardsClaimed")
+        .withArgs(
+          userAddr2,
+          ethers.utils.parseUnits("11", 6),
+          ethers.utils.parseUnits("11", 18)
+        );
       let postBalanceUser2 = await usdc.balanceOf(userAddr2);
+      let postBalanceUserChaos2 = await chaos.balanceOf(userAddr2);
       expect(postBalanceUser2.sub(prevBalanceUser2)).to.be.equal(
         ethers.utils.parseUnits("11", 6)
+      );
+      expect(postBalanceUserChaos2.sub(prevBalanceUserChaos2)).to.be.equal(
+        ethers.utils.parseUnits("11", 18)
       );
       await depositRewardsInVault(
         wEth,
@@ -566,11 +620,16 @@ describe("FeeManager unit test", function () {
         feeManager,
         arrakisV2
       );
+      let prevBalanceUserChaos3 = await chaos.balanceOf(userAddr3);
       let prevBalanceUser3 = await usdc.balanceOf(userAddr3);
       await feeManager.connect(owner).claimFees(userAddr3);
       let postBalanceUser3 = await usdc.balanceOf(userAddr3);
+      let postBalanceUserChaos3 = await chaos.balanceOf(userAddr3);
       expect(postBalanceUser3.sub(prevBalanceUser3)).to.be.equal(
         ethers.utils.parseUnits("12", 6)
+      );
+      expect(postBalanceUserChaos3.sub(prevBalanceUserChaos3)).to.be.equal(
+        ethers.utils.parseUnits("12", 18)
       );
       await depositRewardsInVault(
         wEth,
@@ -581,16 +640,26 @@ describe("FeeManager unit test", function () {
         arrakisV2
       );
       prevBalanceUser2 = await usdc.balanceOf(userAddr2);
+      prevBalanceUserChaos2 = await chaos.balanceOf(userAddr2);
       await feeManager.connect(user2).claimFees(userAddr2);
       postBalanceUser2 = await usdc.balanceOf(userAddr2);
+      postBalanceUserChaos2 = await chaos.balanceOf(userAddr2);
       expect(postBalanceUser2.sub(prevBalanceUser2)).to.be.equal(
         ethers.utils.parseUnits("3", 6)
       );
+      expect(postBalanceUserChaos2.sub(prevBalanceUserChaos2)).to.be.equal(
+        ethers.utils.parseUnits("3", 18)
+      );
       prevBalanceUser3 = await usdc.balanceOf(userAddr3);
+      prevBalanceUserChaos3 = await chaos.balanceOf(userAddr3);
       await feeManager.connect(owner).claimFees(userAddr3);
       postBalanceUser3 = await usdc.balanceOf(userAddr3);
+      postBalanceUserChaos3 = await chaos.balanceOf(userAddr3);
       expect(postBalanceUser3.sub(prevBalanceUser3)).to.be.equal(
         ethers.utils.parseUnits("4", 6)
+      );
+      expect(postBalanceUserChaos3.sub(prevBalanceUserChaos3)).to.be.equal(
+        ethers.utils.parseUnits("4", 18)
       );
     });
     it("#4: Prevent double claim caused by transfer and check algorithm after transfer", async () => {
@@ -824,7 +893,8 @@ describe("FeeManager unit test", function () {
         1000000,
         usdc,
         wEth,
-        owner
+        owner,
+        chaos
       );
       await customVault.mint("1000000000000000000", userAddr2);
       await depositRewardsInVault(
@@ -892,6 +962,157 @@ describe("FeeManager unit test", function () {
       expect(postBalanceUser3.sub(prevBalanceUser3)).to.be.equal(
         ethers.utils.parseUnits("0.000499", 6)
       );
+    });
+  });
+
+  describe("Set rate", async () => {
+    it("#0: Set rate double", async () => {
+      await feeManager.setRate(200);
+      await depositRewardsInVault(
+        wEth,
+        ethers.utils.parseUnits("0", 18),
+        usdc,
+        ethers.utils.parseUnits("10", 6),
+        feeManager,
+        arrakisV2
+      );
+      const prevBalanceUser2 = await usdc.balanceOf(userAddr2);
+      const prevBalanceUserChaos2 = await chaos.balanceOf(userAddr2);
+      await feeManager.connect(user2).claimFees(userAddr2);
+      const postBalanceUser2 = await usdc.balanceOf(userAddr2);
+      const postBalanceUserChaos2 = await chaos.balanceOf(userAddr2);
+      expect(postBalanceUser2.sub(prevBalanceUser2)).to.be.equal(
+        ethers.utils.parseUnits("10", 6)
+      );
+      expect(postBalanceUserChaos2.sub(prevBalanceUserChaos2)).to.be.equal(
+        ethers.utils.parseUnits("20", 18)
+      );
+    });
+    it("#1: Set rate half", async () => {
+      await feeManager.setRate(50);
+      await depositRewardsInVault(
+        wEth,
+        ethers.utils.parseUnits("0", 18),
+        usdc,
+        ethers.utils.parseUnits("10", 6),
+        feeManager,
+        arrakisV2
+      );
+      const prevBalanceUser2 = await usdc.balanceOf(userAddr2);
+      const prevBalanceUserChaos2 = await chaos.balanceOf(userAddr2);
+      await expect(await feeManager.connect(user2).claimFees(userAddr2))
+        .to.emit(feeManager, "RewardsClaimed")
+        .withArgs(
+          userAddr2,
+          ethers.utils.parseUnits("10", 6),
+          ethers.utils.parseUnits("5", 18)
+        );
+      const postBalanceUser2 = await usdc.balanceOf(userAddr2);
+      const postBalanceUserChaos2 = await chaos.balanceOf(userAddr2);
+      expect(postBalanceUser2.sub(prevBalanceUser2)).to.be.equal(
+        ethers.utils.parseUnits("10", 6)
+      );
+      expect(postBalanceUserChaos2.sub(prevBalanceUserChaos2)).to.be.equal(
+        ethers.utils.parseUnits("5", 18)
+      );
+    });
+    it("#2: Set rate zero", async () => {
+      await feeManager.setRate(0);
+      await depositRewardsInVault(
+        wEth,
+        ethers.utils.parseUnits("0", 18),
+        usdc,
+        ethers.utils.parseUnits("10", 6),
+        feeManager,
+        arrakisV2
+      );
+      const prevBalanceUser2 = await usdc.balanceOf(userAddr2);
+      const prevBalanceUserChaos2 = await chaos.balanceOf(userAddr2);
+      await feeManager.connect(user2).claimFees(userAddr2);
+      const postBalanceUser2 = await usdc.balanceOf(userAddr2);
+      const postBalanceUserChaos2 = await chaos.balanceOf(userAddr2);
+      expect(postBalanceUser2.sub(prevBalanceUser2)).to.be.equal(
+        ethers.utils.parseUnits("10", 6)
+      );
+      expect(postBalanceUserChaos2.sub(prevBalanceUserChaos2)).to.be.equal(
+        ethers.utils.parseUnits("0", 18)
+      );
+    });
+  });
+
+  describe("Withdrawals", async () => {
+    it("#0: Withdrawal CHAOS", async () => {
+      const prevChaosBalanceInFeeManager = await chaos.balanceOf(
+        feeManager.address
+      );
+      const prevOwnerBalanceWithdrawal = await chaos.balanceOf(
+        await user.getAddress()
+      );
+      expect(prevChaosBalanceInFeeManager).not.eq(0);
+      await feeManager.withdrawalChaos();
+      const postChaosBalanceInFeeManager = await chaos.balanceOf(
+        feeManager.address
+      );
+      const postOwnerBalanceWithdrawal = await chaos.balanceOf(
+        await user.getAddress()
+      );
+      expect(postChaosBalanceInFeeManager).eq(0);
+      expect(postOwnerBalanceWithdrawal.sub(prevOwnerBalanceWithdrawal)).eq(
+        prevChaosBalanceInFeeManager
+      );
+      await expect(feeManager.withdrawalChaos()).to.be.revertedWith(
+        "FeeManager: No balance to withdrawal"
+      );
+    });
+    it("#1: Withdrawal emergency", async () => {
+      await depositRewardsInVault(
+        wEth,
+        ethers.utils.parseUnits("0", 18),
+        usdc,
+        ethers.utils.parseUnits("10", 6),
+        feeManager,
+        arrakisV2
+      );
+      const prevBalanceInFeeManager = await usdc.balanceOf(feeManager.address);
+      const prevOwnerBalanceWithdrawal = await usdc.balanceOf(
+        await user.getAddress()
+      );
+      expect(prevBalanceInFeeManager).not.eq(0);
+      await feeManager.withdrawEmergency();
+      const postBalanceInFeeManager = await usdc.balanceOf(feeManager.address);
+      const postOwnerBalanceWithdrawal = await usdc.balanceOf(
+        await user.getAddress()
+      );
+      expect(postBalanceInFeeManager).eq(0);
+      expect(postOwnerBalanceWithdrawal.sub(prevOwnerBalanceWithdrawal)).eq(
+        prevBalanceInFeeManager
+      );
+      await expect(feeManager.withdrawEmergency()).to.be.revertedWith(
+        "FeeManager: No USDC to withdraw"
+      );
+    });
+  });
+  describe("Withdrawals", async () => {
+    it("#0: Invalid owner", async () => {
+      await expect(
+        feeManager.connect(user4).withdrawEmergency()
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(
+        feeManager.connect(user4).withdrawalChaos()
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(feeManager.connect(user4).setRate(1000)).to.be.revertedWith(
+        "Ownable: caller is not the owner"
+      );
+    });
+    it("#0: Invalid vault", async () => {
+      await expect(
+        feeManager.connect(user4).setRewardDebt(await user4.getAddress(), 0)
+      ).to.be.revertedWith("Only vault can call");
+      await expect(
+        feeManager
+          .connect(user4)
+          .depositFees(usdc.address, 1000, chaos.address, 1000)
+      ).to.be.revertedWith("Only vault can call");
     });
   });
 });
