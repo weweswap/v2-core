@@ -15,7 +15,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 contract FeeManager is IFeeManager, Ownable {
     using SafeERC20 for IERC20;
 
-    uint256 internal _rate;
+    uint256 public rate;
     IERC20 public immutable chaos;
     IERC20 public immutable vault;
     IERC20 public immutable usdc;
@@ -73,8 +73,8 @@ contract FeeManager is IFeeManager, Ownable {
         IERC20(chaos).transfer(owner(), balance);
     }
 
-    function setRate(uint256 rate) external onlyOwner {
-        _rate = rate;
+    function setRate(uint256 newRate) external onlyOwner {
+        rate = newRate;
     }
 
     function setRewardDebt(address _user, uint256 _amount) external onlyVault {
@@ -124,8 +124,8 @@ contract FeeManager is IFeeManager, Ownable {
         rewardDebt[claimer] = totalReward;
 
         uint256 rewardsToHarvestInChaos = (rewardsToHarvest *
-            _rate *
-            10**(_CHAOS_DECIMALS-_USDC_DECIMALS)) / 100;
+            rate *
+            10**(_CHAOS_DECIMALS - _USDC_DECIMALS)) / 100;
 
         usdc.safeTransfer(claimer, rewardsToHarvest);
 
