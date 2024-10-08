@@ -22,6 +22,12 @@ interface IFeeManager {
     // Function to emergency withdraw all the USDC of the contract (Only Owner)
     function withdrawEmergency() external;
 
+    // Function to withdraw all CHAOS of the contract (Only Owner)
+    function withdrawalChaos() external;
+
+    // Set conversion rate between USDC and CHAOS (Only Owner)
+    function setRate(uint256 rate) external;
+
     // Setter for a user's rewardDebt (can only be called by the vault)
     function setRewardDebt(address _user, uint256 _amount) external;
 

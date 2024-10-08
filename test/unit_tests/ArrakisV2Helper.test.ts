@@ -133,10 +133,14 @@ describe("ArrakisV2Helper functions unit test", function () {
         user
       )) as ArrakisV2;
 
+      const chaosTokenFactory = await ethers.getContractFactory("MockERC20");
+      const chaosToken = await chaosTokenFactory.deploy();
+
       const feeManagerFactory = await ethers.getContractFactory("FeeManager");
       const feeManager = await feeManagerFactory.deploy(
         arrakisV2.address,
         addresses.USDC,
+        chaosToken.address,
         addresses.SwapRouter02,
         3000
       );

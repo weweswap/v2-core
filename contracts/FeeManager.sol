@@ -15,13 +15,27 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 contract FeeManager is IFeeManager, Ownable {
     using SafeERC20 for IERC20;
 
+    uint256 public rate;
+    IERC20 public immutable chaos;
     IERC20 public immutable vault;
     IERC20 public immutable usdc;
     ISwapRouter02 public immutable router;
     uint256 public accumulatedRewardsPerShare;
     mapping(address => uint256) public rewardDebt;
     uint256 public constant REWARDS_PRECISION = 1e24;
+    uint8 private constant _USDC_DECIMALS = 6;
+    uint8 private constant _CHAOS_DECIMALS = 18;
     uint24 public immutable feeTier;
+
+    event RewardsClaimed(
+        address indexed user,
+        uint256 usdcAmount,
+        uint256 chaosAmount
+    );
+
+    event RewardsConvertedToUsdc(
+        uint256 usdcAmount
+    );
 
     modifier onlyVault() {
         require(address(vault) == msg.sender, "Only vault can call");
@@ -31,6 +45,7 @@ contract FeeManager is IFeeManager, Ownable {
     constructor(
         address vault_,
         address usdc_,
+        address chaos_,
         address uniSwapRouter_,
         uint24 feeTier_
     ) {
@@ -43,6 +58,7 @@ contract FeeManager is IFeeManager, Ownable {
         feeTier = feeTier_;
         vault = IERC20(vault_);
         usdc = IERC20(usdc_);
+        chaos = IERC20(chaos_);
         router = ISwapRouter02(uniSwapRouter_);
 
         transferOwnership(msg.sender);
@@ -52,8 +68,17 @@ contract FeeManager is IFeeManager, Ownable {
     function withdrawEmergency() external onlyOwner {
         uint256 balance = usdc.balanceOf(address(this));
         require(balance > 0, "FeeManager: No USDC to withdraw");
-
         usdc.safeTransfer(owner(), balance);
+    }
+
+    function withdrawalChaos() external onlyOwner {
+        uint256 balance = chaos.balanceOf(address(this));
+        require(balance > 0, "FeeManager: No balance to withdrawal");
+        IERC20(chaos).transfer(owner(), balance);
+    }
+
+    function setRate(uint256 newRate) external onlyOwner {
+        rate = newRate;
     }
 
     function setRewardDebt(address _user, uint256 _amount) external onlyVault {
@@ -84,6 +109,8 @@ contract FeeManager is IFeeManager, Ownable {
         accumulatedRewardsPerShare =
             accumulatedRewardsPerShare +
             FullMath.mulDiv(rewards, REWARDS_PRECISION, vault.totalSupply());
+
+        emit RewardsConvertedToUsdc(rewards);
     }
 
     function claimFees(address claimer) public {
@@ -100,10 +127,19 @@ contract FeeManager is IFeeManager, Ownable {
             return;
         }
 
-        // TODO: Add event
         rewardDebt[claimer] = totalReward;
 
+        uint256 rewardsToHarvestInChaos = (rewardsToHarvest *
+            rate *
+            10**(_CHAOS_DECIMALS - _USDC_DECIMALS)) / 100;
+
         usdc.safeTransfer(claimer, rewardsToHarvest);
+
+        if (rewardsToHarvestInChaos > 0) {
+            chaos.safeTransfer(claimer, rewardsToHarvestInChaos);
+        }
+
+        emit RewardsClaimed(claimer, rewardsToHarvest, rewardsToHarvestInChaos);
     }
 
     function _swapToUSDC(address token, uint256 feesToken)
