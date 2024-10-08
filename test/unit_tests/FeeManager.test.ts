@@ -69,7 +69,8 @@ const depositRewardsInVault = async (
   usdc: Contract,
   fee1: BigNumber,
   feeManager: FeeManager,
-  vaultToImpersonate: ArrakisV2
+  vaultToImpersonate: ArrakisV2,
+  expectRewardsConvertedToUsdc?: { usdcAmount: string }
 ) => {
   // Generate add founds to de vault (simulate fees) + add matic for pay fees
   await weth.transfer(vaultToImpersonate.address, fee0);
@@ -96,9 +97,19 @@ const depositRewardsInVault = async (
   await usdc
     .connect(vaultSigner)
     .approve(feeManager.address, ethers.constants.MaxUint256);
-  await feeManager
-    .connect(vaultSigner)
-    .depositFees(weth.address, fee0, usdc.address, fee1);
+  if (!expectRewardsConvertedToUsdc) {
+    await feeManager
+      .connect(vaultSigner)
+      .depositFees(weth.address, fee0, usdc.address, fee1);
+  } else {
+    await expect(
+      feeManager
+        .connect(vaultSigner)
+        .depositFees(weth.address, fee0, usdc.address, fee1)
+    )
+      .to.emit(feeManager, "RewardsConvertedToUsdc")
+      .withArgs(expectRewardsConvertedToUsdc.usdcAmount);
+  }
   await hre.network.provider.request({
     method: "hardhat_stopImpersonatingAccount",
     params: [vaultToImpersonate.address],
@@ -584,7 +595,8 @@ describe("FeeManager unit test", function () {
         usdc,
         ethers.utils.parseUnits("10", 6),
         feeManager,
-        arrakisV2
+        arrakisV2,
+        { usdcAmount: "10000000" }
       );
       await arrakisV2.mint("4000000000000000000", userAddr3);
       await depositRewardsInVault(

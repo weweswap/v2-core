@@ -33,6 +33,10 @@ contract FeeManager is IFeeManager, Ownable {
         uint256 chaosAmount
     );
 
+    event RewardsConvertedToUsdc(
+        uint256 usdcAmount
+    );
+
     modifier onlyVault() {
         require(address(vault) == msg.sender, "Only vault can call");
         _;
@@ -105,6 +109,8 @@ contract FeeManager is IFeeManager, Ownable {
         accumulatedRewardsPerShare =
             accumulatedRewardsPerShare +
             FullMath.mulDiv(rewards, REWARDS_PRECISION, vault.totalSupply());
+
+        emit RewardsConvertedToUsdc(rewards);
     }
 
     function claimFees(address claimer) public {
