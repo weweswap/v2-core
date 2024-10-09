@@ -5,7 +5,7 @@ import { getAddresses, Addresses } from "../src/addresses";
 import { sleep } from "../src/utils";
 
 const vaultAddress = "0x3Fd7957D9F98D46c755685B67dFD8505468A7Cb6"; // TODO: Automatize deploy vault
-const chaosToken = "0x0000000000000000000000000000000000000000";
+const chaosToken = "0x6573D177273931c44Aa647DaAF90325545a7fCC4";
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   if (
