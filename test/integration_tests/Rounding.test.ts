@@ -205,10 +205,13 @@ describe("Rounding integration test", async function () {
       user
     )) as ArrakisV2;
 
+    const chaosTokenFactory = await ethers.getContractFactory("MockERC20");
+    const chaosToken = await chaosTokenFactory.deploy();
     const feeManagerFactory = await ethers.getContractFactory("FeeManager");
     const feeManager = await feeManagerFactory.deploy(
       vaultV2.address,
       addresses.USDC,
+      chaosToken.address,
       addresses.SwapRouter02,
       3000
     );
