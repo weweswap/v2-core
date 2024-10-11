@@ -6,6 +6,7 @@ import {
     SafeERC20
 } from "./abstract/ArrakisV2Storage.sol";
 import {IArrakisV2} from "./interfaces/IArrakisV2.sol";
+import "hardhat/console.sol";
 
 contract ZapKyber {
     using SafeERC20 for IERC20;
@@ -61,6 +62,8 @@ contract ZapKyber {
             _callData
         );
 
+        console.log(success);
+
         propagateError(success, retData, "kyber");
 
         require(success == true, "calling Kyber got an error");
@@ -69,9 +72,9 @@ contract ZapKyber {
     }
 
     function _approveTokenIfNeeded(address token, address spender) private {
-        if (IERC20(token).allowance(address(this), spender) == 0) {
-            IERC20(token).safeApprove(spender, type(uint256).max);
-        }
+        // if (IERC20(token).allowance(address(this), spender) == 0) {
+        IERC20(token).safeApprove(spender, type(uint256).max);
+        // }
     }
 
     function _swapAndMint(
@@ -98,6 +101,10 @@ contract ZapKyber {
             path[3] = inputToken1;
         }
 
+        console.log(inputToken0);
+        console.log(path[0]);
+        console.log(path[1]);
+
         if (inputToken0 != path[0]) {
             _swapViaKyber(inputToken0, token0);
         }
@@ -109,16 +116,13 @@ contract ZapKyber {
         _approveTokenIfNeeded(address(vaultInstance.token0()), vault);
         _approveTokenIfNeeded(address(vaultInstance.token1()), vault);
         vaultInstance.mint(minAmount, msg.sender);
-        _returnAssets(path);
-    }
-
-    function _returnAssets(address[] memory tokens) private {
-        uint256 balance;
-        for (uint256 i; i < tokens.length; i++) {
-            balance = IERC20(tokens[i]).balanceOf(address(this));
-            if (balance > 0) {
-                IERC20(tokens[i]).safeTransfer(msg.sender, balance);
-            }
+        uint256 balanceToken0 = IERC20(vaultInstance.token0()).balanceOf(address(this));
+        if (balanceToken0 > 0) {
+            IERC20(vaultInstance.token0()).safeTransfer(msg.sender, balanceToken0);
+        }
+        uint256 balanceToken1 = IERC20(vaultInstance.token1()).balanceOf(address(this));
+        if (balanceToken1 > 0) {
+            IERC20(vaultInstance.token1()).safeTransfer(msg.sender, balanceToken1);
         }
     }
 }
