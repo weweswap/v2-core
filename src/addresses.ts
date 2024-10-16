@@ -11,6 +11,7 @@ export interface Addresses {
   ArrakisV2Factory: string;
   ArrakisV2Helper: string;
   ArrakisV2Resolver: string;
+  kyberAggregator: string;
 }
 
 export const getAddresses = (network: string): Addresses => {
@@ -28,6 +29,7 @@ export const getAddresses = (network: string): Addresses => {
         ArrakisV2Factory: "0xECb8Ffcb2369EF188A082a662F496126f66c8288",
         ArrakisV2Helper: "0x89E4bE1F999E3a58D16096FBe405Fc2a1d7F07D6",
         ArrakisV2Resolver: "0x535C5fDf31477f799366DF6E4899a12A801cC7b8",
+        kyberAggregator: "0x6131B5fae19EA4f9D964eAc0408E4408b66337b5",
       };
     case "base":
       return {
@@ -42,6 +44,7 @@ export const getAddresses = (network: string): Addresses => {
         ArrakisV2Factory: "0x31b383B929d7Dd30299854aa82Bc8112fa23990b",
         ArrakisV2Helper: "0x8c294f4e6bdeEB8967D67a7c4a7C56b3d30653d9",
         ArrakisV2Resolver: "0x8512828605abC5c10d58254B25921E7a5735012c",
+        kyberAggregator: "0x6131B5fae19EA4f9D964eAc0408E4408b66337b5",
       };
     default:
       throw new Error(`No addresses for Network: ${network}`);
