@@ -6,15 +6,17 @@ import {
     SafeERC20
 } from "./abstract/ArrakisV2Storage.sol";
 import {IArrakisV2} from "./interfaces/IArrakisV2.sol";
-import "hardhat/console.sol";
 
 contract ZapKyber {
     using SafeERC20 for IERC20;
+    // address public immutable WETH;
     address public immutable AGGREGATION_ROUTER;
+    address public immutable CHAOS_TOKEN = 0x6573D177273931c44Aa647DaAF90325545a7fCC4;
     uint256 public constant MINIMUM_AMOUNT = 1000;
 
     constructor(address _aggregationRouter) {
         AGGREGATION_ROUTER = _aggregationRouter;
+        // WETH = _WETH;
     }
         
     function zapIn(
@@ -37,6 +39,19 @@ contract ZapKyber {
         _swapAndMint(vault, inputToken, inputToken, mintAmount, token0, token1);
     }
 
+    function zapOut(
+        address vault,
+        uint256 sharesToBurn,
+        address tokenToSwap,
+        bytes memory routeToExecute
+    ) public {
+        IERC20(vault).safeTransferFrom(
+            msg.sender,
+            address(this),
+            sharesToBurn
+        );
+        _burnAndSwap(vault, sharesToBurn, tokenToSwap, routeToExecute);
+    }
 
     function propagateError(
         bool success,
@@ -62,8 +77,6 @@ contract ZapKyber {
             _callData
         );
 
-        console.log(success);
-
         propagateError(success, retData, "kyber");
 
         require(success == true, "calling Kyber got an error");
@@ -72,9 +85,9 @@ contract ZapKyber {
     }
 
     function _approveTokenIfNeeded(address token, address spender) private {
-        // if (IERC20(token).allowance(address(this), spender) == 0) {
-        IERC20(token).safeApprove(spender, type(uint256).max);
-        // }
+        if (IERC20(token).allowance(address(this), spender) == 0) {
+            IERC20(token).safeApprove(spender, type(uint256).max);
+        }
     }
 
     function _swapAndMint(
@@ -101,10 +114,6 @@ contract ZapKyber {
             path[3] = inputToken1;
         }
 
-        console.log(inputToken0);
-        console.log(path[0]);
-        console.log(path[1]);
-
         if (inputToken0 != path[0]) {
             _swapViaKyber(inputToken0, token0);
         }
@@ -116,13 +125,42 @@ contract ZapKyber {
         _approveTokenIfNeeded(address(vaultInstance.token0()), vault);
         _approveTokenIfNeeded(address(vaultInstance.token1()), vault);
         vaultInstance.mint(minAmount, msg.sender);
-        uint256 balanceToken0 = IERC20(vaultInstance.token0()).balanceOf(address(this));
-        if (balanceToken0 > 0) {
-            IERC20(vaultInstance.token0()).safeTransfer(msg.sender, balanceToken0);
-        }
-        uint256 balanceToken1 = IERC20(vaultInstance.token1()).balanceOf(address(this));
-        if (balanceToken1 > 0) {
-            IERC20(vaultInstance.token1()).safeTransfer(msg.sender, balanceToken1);
+        _returnAssets(path);
+    }
+
+    function _burnAndSwap(
+        address vault,
+        uint256 sharesToBurn,
+        address tokenToSwap,
+        bytes memory routeToExecute
+    ) private {
+        IArrakisV2 vaultInstance = IArrakisV2(vault);
+
+        address[] memory path = new address[](3);
+        path[0] = address(vaultInstance.token0());
+        path[1] = address(vaultInstance.token1());
+        path[2] = address(CHAOS_TOKEN); // We need to return also CHAOS rewards to users
+
+        vaultInstance.burn(sharesToBurn, address(this));
+
+        _swapViaKyber(tokenToSwap, routeToExecute);
+
+        _returnAssets(path);
+    }
+
+    function _returnAssets(address[] memory tokens) private {
+        uint256 balance;
+        for (uint256 i; i < tokens.length; i++) {
+            balance = IERC20(tokens[i]).balanceOf(address(this));
+            if (balance > 0) {
+                // if (tokens[i] == WETH) {
+                //     WETH.withdraw(balance);
+                //     (bool success,) = msg.sender.call{value: balance}(new bytes(0));
+                //     require(success, 'Weweswap: ETH transfer failed');
+                // } else {
+                    IERC20(tokens[i]).safeTransfer(msg.sender, balance);
+                // }
+            }
         }
     }
 }

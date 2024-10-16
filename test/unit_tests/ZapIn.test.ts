@@ -29,10 +29,10 @@ async function getKyberParams(
   tokenIn: any,
   tokenOut: any,
   amountIn: string,
-  userAddress: string
+  userAddress: string,
+  chain: string
 ) {
-  const chain = "polygon";
-  const slippage = 25;
+  const slippage = 2000;
 
   const targetPathConfig = {
     params: {
@@ -93,6 +93,7 @@ describe("ZapInKyber unit test", function () {
   let addresses: Addresses;
   let feeManager: FeeManager;
   let wEth: Contract;
+  let wewe: Contract;
   let usdc: Contract;
   let chaos: Contract;
   let wMatic: Contract;
@@ -213,7 +214,6 @@ describe("ZapInKyber unit test", function () {
     await feeManager.setRate(100);
 
     const zapInFactory = await ethers.getContractFactory("ZapKyber");
-    console.log("addresses", addresses);
     zapIn = (await zapInFactory.deploy(addresses.kyberAggregator)) as ZapKyber;
 
     arrakisV2.connect(user).setFeeManager(feeManager.address);
@@ -325,8 +325,8 @@ describe("ZapInKyber unit test", function () {
     // #endregion rebalance to deposit user token into the uniswap v3 pool.
   });
 
-  describe("Single side fees", () => {
-    it("#0: Get 100% when your are alone in the vault", async () => {
+  describe("Zaps", () => {
+    it("#0: Zap in with USDC", async () => {
       await wEth.approve(arrakisV2.address, ethers.constants.MaxUint256);
       await usdc.approve(arrakisV2.address, ethers.constants.MaxUint256);
 
@@ -343,7 +343,8 @@ describe("ZapInKyber unit test", function () {
         addresses.USDC,
         addresses.WETH,
         "2000000",
-        userAddress
+        userAddress,
+        "polygon"
       );
 
       console.log("route", result.encodedCallData);
@@ -369,6 +370,82 @@ describe("ZapInKyber unit test", function () {
 
       console.log("prevBalance", prevBalance.toString());
       console.log("postBalance", postBalance.toString());
+    });
+    it.only("#0: Zap out with USDC", async () => {
+      await wEth.approve(arrakisV2.address, ethers.constants.MaxUint256);
+      await usdc.approve(arrakisV2.address, ethers.constants.MaxUint256);
+
+      const addressToImpersonate = "0x38019bC40f504BE4546F24083Ccaf0c8553C408A";
+      await hre.network.provider.request({
+        method: "hardhat_impersonateAccount",
+        params: [addressToImpersonate],
+      });
+
+      await arrakisV2
+        .connect(user2)
+        .approve(zapIn.address, ethers.constants.MaxUint256);
+
+      const [amount0, amount1] = await arrakisV2
+        .connect(userAddr2)
+        .callStatic.burn("1000000000000000000", userAddr2);
+
+      console.log("token0", await arrakisV2.token0()); // USDC
+      console.log("amount0", amount0.toString());
+      console.log("98% amount1", amount1.mul(98).div(100).toString());
+      console.log("2% amount1", amount1.mul(2).div(100).toString());
+
+      const result = await getKyberParams(
+        addresses.WETH,
+        addresses.USDC,
+        amount1.mul(98).div(100).toString(),
+        zapIn.address,
+        "polygon"
+      );
+
+      const resultBase = await getKyberParams(
+        "0x6b9bb36519538e0c073894e964e90172e1c0b41f",
+        "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "8000000000000000000000",
+        "0x9377daBe42574cFB0BA202ed1A3a133C68fA1Bfd",
+        "base"
+      );
+
+      const resultBaseZapIn = await getKyberParams(
+        "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "0x6b9bb36519538e0c073894e964e90172e1c0b41f",
+        "1500000",
+        "0x9377daBe42574cFB0BA202ed1A3a133C68fA1Bfd",
+        "base"
+      );
+
+      console.log("resultBase", resultBase);
+      console.log("resultBresultBaseZapInase", resultBaseZapIn);
+
+      const prevBalance = await arrakisV2.balanceOf(userAddr2);
+      const prevBalanceUsdc = await usdc.balanceOf(userAddr2);
+      const prevBalanceWeth = await wEth.balanceOf(userAddr2);
+
+      await zapIn
+        .connect(user2)
+        .zapOut(
+          arrakisV2.address,
+          "1000000000000000000",
+          addresses.WETH,
+          result.encodedCallData
+        );
+
+      const postBalance = await arrakisV2.balanceOf(userAddr2);
+      const postBalanceUsdc = await usdc.balanceOf(userAddr2);
+      const postBalanceWeth = await wEth.balanceOf(userAddr2);
+
+      console.log("prevBalance", prevBalance.toString());
+      console.log("postBalance", postBalance.toString());
+
+      console.log("prevBalanceUsdc", prevBalanceUsdc.toString());
+      console.log("postBalanceUsdc", postBalanceUsdc.toString());
+
+      console.log("prevBalanceWeth", prevBalanceWeth.toString());
+      console.log("postBalanceWeth", postBalanceWeth.toString());
     });
   });
 });
