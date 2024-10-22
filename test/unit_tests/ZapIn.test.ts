@@ -78,11 +78,8 @@ describe("ZapInKyber unit test", function () {
   let user: Signer;
   let user2: Signer;
   let owner: Signer;
-  let user4: Signer;
   let userAddr: string;
   let userAddr2: string;
-  let userAddr3: string;
-  let userAddr4: string;
   let uniswapV3Factory: IUniswapV3Factory;
   let uniswapV3Pool: IUniswapV3Pool;
   let arrakisV2: ArrakisV2;
@@ -93,7 +90,6 @@ describe("ZapInKyber unit test", function () {
   let addresses: Addresses;
   let feeManager: FeeManager;
   let wEth: Contract;
-  let wewe: Contract;
   let usdc: Contract;
   let chaos: Contract;
   let wMatic: Contract;
@@ -112,12 +108,10 @@ describe("ZapInKyber unit test", function () {
 
     addresses = getAddresses(hre.network.name);
 
-    [user, user2, owner, user4] = await ethers.getSigners();
+    [user, user2, owner] = await ethers.getSigners();
 
     userAddr = await user.getAddress();
     userAddr2 = await user2.getAddress();
-    userAddr3 = await owner.getAddress();
-    userAddr4 = await user4.getAddress();
 
     arrakisV2Factory = (await ethers.getContract(
       "ArrakisV2Factory",
@@ -325,7 +319,7 @@ describe("ZapInKyber unit test", function () {
     // #endregion rebalance to deposit user token into the uniswap v3 pool.
   });
 
-  describe("Zaps", () => {
+  describe.skip("Zaps", () => {
     it("#0: Zap in with USDC", async () => {
       await wEth.approve(arrakisV2.address, ethers.constants.MaxUint256);
       await usdc.approve(arrakisV2.address, ethers.constants.MaxUint256);

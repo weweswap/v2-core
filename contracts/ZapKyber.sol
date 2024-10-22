@@ -1,24 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.13;
 
-import {
-    IERC20,
-    SafeERC20
-} from "./abstract/ArrakisV2Storage.sol";
+import {IERC20, SafeERC20} from "./abstract/ArrakisV2Storage.sol";
 import {IArrakisV2} from "./interfaces/IArrakisV2.sol";
 
 contract ZapKyber {
     using SafeERC20 for IERC20;
     // address public immutable WETH;
-    address public immutable AGGREGATION_ROUTER;
-    address public immutable CHAOS_TOKEN = 0x6573D177273931c44Aa647DaAF90325545a7fCC4;
+    address public immutable aggregationRouter;
+    address public immutable chaosToken =
+        0x6573D177273931c44Aa647DaAF90325545a7fCC4;
     uint256 public constant MINIMUM_AMOUNT = 1000;
 
     constructor(address _aggregationRouter) {
-        AGGREGATION_ROUTER = _aggregationRouter;
+        aggregationRouter = _aggregationRouter;
         // WETH = _WETH;
     }
-        
+
     function zapIn(
         address vault,
         address inputToken,
@@ -45,11 +43,7 @@ contract ZapKyber {
         address tokenToSwap,
         bytes memory routeToExecute
     ) public {
-        IERC20(vault).safeTransferFrom(
-            msg.sender,
-            address(this),
-            sharesToBurn
-        );
+        IERC20(vault).safeTransferFrom(msg.sender, address(this), sharesToBurn);
         _burnAndSwap(vault, sharesToBurn, tokenToSwap, routeToExecute);
     }
 
@@ -71,9 +65,9 @@ contract ZapKyber {
         internal
         returns (uint256)
     {
-        _approveTokenIfNeeded(_inputToken, address(AGGREGATION_ROUTER));
+        _approveTokenIfNeeded(_inputToken, address(aggregationRouter));
 
-        (bool success, bytes memory retData) = AGGREGATION_ROUTER.call(
+        (bool success, bytes memory retData) = aggregationRouter.call(
             _callData
         );
 
@@ -139,7 +133,7 @@ contract ZapKyber {
         address[] memory path = new address[](3);
         path[0] = address(vaultInstance.token0());
         path[1] = address(vaultInstance.token1());
-        path[2] = address(CHAOS_TOKEN); // We need to return also CHAOS rewards to users
+        path[2] = address(chaosToken); // We need to return also CHAOS rewards to users
 
         vaultInstance.burn(sharesToBurn, address(this));
 
