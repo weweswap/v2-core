@@ -5,7 +5,11 @@ const erc20ABI = [
   "function approve(address spender, uint256 amount) external returns (bool)",
 ];
 
-async function zapIn(vaultAddress, inputToken, tokenInAmount) {
+async function zapIn(
+  vaultAddress: unknown,
+  inputToken: unknown,
+  tokenInAmount: unknown
+) {
   const url = "https://app-backend-development.up.railway.app/api/zap-in";
 
   const body = {
