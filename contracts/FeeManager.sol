@@ -33,9 +33,7 @@ contract FeeManager is IFeeManager, Ownable {
         uint256 chaosAmount
     );
 
-    event RewardsConvertedToUsdc(
-        uint256 usdcAmount
-    );
+    event RewardsConvertedToUsdc(uint256 usdcAmount);
 
     modifier onlyVault() {
         require(address(vault) == msg.sender, "Only vault can call");

@@ -30,6 +30,7 @@
     "verify-position": "npx hardhat run ./scripts/verify/verifyPosition.ts",
     "verify-vault-factory-v2": "npx hardhat run ./scripts/verify/verifyVaultFactoryV2.ts",
     "verify-fee-manager": "npx hardhat run ./scripts/verify/verifyFeeManager.ts",
+    "verify-zap-kyber": "npx hardhat run ./scripts/verify/verifyZapKyber.ts",
     "verify-vault-v2": "npx hardhat run ./scripts/verify/verifyVaultV2.ts",
     "verify-vault-v2-beacon": "npx hardhat run ./scripts/verify/verifyVaultV2Beacon.ts",
     "verify-vault-v2-new-vault": "npx hardhat run ./scripts/verify/verifyTransparentProxyV2.ts",
