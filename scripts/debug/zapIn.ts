@@ -67,7 +67,7 @@ async function main() {
     amountToApprove
   );
   await approveTx.wait();
-  const amountIn = "2000000";
+  const amountIn = "1000000";
   console.log("Token aprobado con éxito");
   const result = await zapIn(
     "0x3Fd7957D9F98D46c755685B67dFD8505468A7Cb6",
@@ -93,7 +93,12 @@ async function main() {
     amountIn,
     (BigInt(result.mintAmount) * BigInt(95)) / BigInt(100),
     result.kyberSwapEncodedRoute,
-    result.kyberSwapEncodedRoute
+    result.kyberSwapEncodedRoute,
+    {
+      gasLimit: ethers.utils.hexlify(1500000),
+      maxFeePerGas: ethers.utils.parseUnits("62702908", "wei"),
+      maxPriorityFeePerGas: ethers.utils.parseUnits("62702908", "wei"),
+    }
   );
 
   console.log("Broadcasted...");

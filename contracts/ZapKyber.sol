@@ -153,13 +153,7 @@ contract ZapKyber {
         for (uint256 i; i < tokens.length; i++) {
             balance = IERC20(tokens[i]).balanceOf(address(this));
             if (balance > 0) {
-                // if (tokens[i] == WETH) {
-                //     WETH.withdraw(balance);
-                //     (bool success,) = msg.sender.call{value: balance}(new bytes(0));
-                //     require(success, 'Weweswap: ETH transfer failed');
-                // } else {
-                    IERC20(tokens[i]).safeTransfer(msg.sender, balance);
-                // }
+                IERC20(tokens[i]).safeTransfer(msg.sender, balance);
             }
         }
     }
