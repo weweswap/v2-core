@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { Signer } from "ethers";
+import { BigNumber, Signer } from "ethers";
 import hre = require("hardhat");
 import {
   IUniswapV3Factory,
@@ -12,7 +12,7 @@ import {
 import { getAddresses, Addresses } from "../../src/addresses";
 const { ethers, deployments } = hre;
 
-describe("Factory function unit test", function () {
+describe.only("Factory function unit test", function () {
   this.timeout(0);
 
   let user: Signer;
@@ -22,6 +22,7 @@ describe("Factory function unit test", function () {
   let arrakisV2Resolver: ArrakisV2Resolver;
   let addresses: Addresses;
   let owner: Signer;
+  let impersonateOwner: Signer;
 
   beforeEach("Setting up for Factory view function test", async function () {
     if (hre.network.name !== "hardhat") {
@@ -29,7 +30,7 @@ describe("Factory function unit test", function () {
       process.exit(1);
     }
 
-    addresses = getAddresses(hre.network.name);
+    addresses = getAddresses("base"); // use base to siulate mainnet
     await deployments.fixture();
 
     [user, , owner] = await ethers.getSigners();
@@ -56,52 +57,86 @@ describe("Factory function unit test", function () {
 
     // await arrakisV2Factory.initialize(await owner.getAddress());
 
+    await hre.network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: ["0x0625Db97368dF1805314E68D0E63e5eB154B9AE6"],
+    });
+
+    impersonateOwner = await ethers.provider.getSigner(
+      "0x0625Db97368dF1805314E68D0E63e5eB154B9AE6" // we we owner
+    );
+
     arrakisV2Factory = (await ethers.getContract(
       "ArrakisV2Factory",
-      user
+      "0x0625Db97368dF1805314E68D0E63e5eB154B9AE6" //user
     )) as ArrakisV2Factory;
 
     const uniswapV3Factory = (await ethers.getContractAt(
       "IUniswapV3Factory",
       addresses.UniswapV3Factory,
-      user
+      "0x0625Db97368dF1805314E68D0E63e5eB154B9AE6", // user
     )) as IUniswapV3Factory;
+
+    // uniswapV3Pool = (await ethers.getContractAt(
+    //   "IUniswapV3Pool",
+    //   await uniswapV3Factory.getPool(addresses.USDC, addresses.WETH, 500),
+    //   user
+    // )) as IUniswapV3Pool;
 
     uniswapV3Pool = (await ethers.getContractAt(
       "IUniswapV3Pool",
-      await uniswapV3Factory.getPool(addresses.USDC, addresses.WETH, 500),
+      await uniswapV3Factory.getPool(addresses.USDC, addresses.WETH, 10000),
       user
     )) as IUniswapV3Pool;
+
+    console.log(uniswapV3Pool.address);
 
     arrakisV2Resolver = (await ethers.getContract(
       "ArrakisV2Resolver"
     )) as ArrakisV2Resolver;
   });
 
-  it("#0: unit test create a vault v2", async () => {
+  it.only("#0: unit test create a vault v2", async () => {
     const slot0 = await uniswapV3Pool.slot0();
     const tickSpacing = await uniswapV3Pool.tickSpacing();
+
+    // get values https://basescan.org/address/0x0b1c2dcbbfa744ebd3fc17ff1a96a1e1eb4b2d69#readContract
+    const sqrtPriceX96 = BigNumber.from("3872514393515746240839284");
+    const sqrt = slot0.sqrtPriceX96;
+
+    const tick = 198534;
 
     const lowerTick = slot0.tick - (slot0.tick % tickSpacing) - tickSpacing;
     const upperTick = slot0.tick - (slot0.tick % tickSpacing) + 2 * tickSpacing;
 
+    // const lowerTick = tick - (tick % tickSpacing) - tickSpacing;
+    // const upperTick = tick - (tick % tickSpacing) + 2 * tickSpacing;
+
     // For initialization.
     const res = await arrakisV2Resolver.getAmountsForLiquidity(
-      slot0.sqrtPriceX96,
+      sqrt,
       lowerTick,
       upperTick,
       ethers.utils.parseUnits("1", 18)
     );
 
-    const tx = await arrakisV2Factory.connect(owner).deployVault(
+    const token0 = addresses.WETH;
+    const token1 = addresses.USDC;
+
+    console.log("token0: ", token0);
+    console.log("token1: ", token1);
+    console.log("init0: ", res.amount0.toString());
+    console.log("init1: ", res.amount1.toString());
+
+    const tx = await arrakisV2Factory.connect(impersonateOwner).deployVault(
       {
-        feeTiers: [500],
-        token0: addresses.USDC,
-        token1: addresses.WETH,
-        owner: userAddr,
+        feeTiers: [10000], // was 500
+        token0: token0,
+        token1: token1,
+        owner: "0x0625Db97368dF1805314E68D0E63e5eB154B9AE6", // we we owner
         init0: res.amount0,
         init1: res.amount1,
-        manager: userAddr,
+        manager: "0x0625Db97368dF1805314E68D0E63e5eB154B9AE6", // user
         routers: [],
       },
       true

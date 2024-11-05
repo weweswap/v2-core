@@ -1,3 +1,5 @@
+import { ethers } from "hardhat";
+
 /* eslint-disable @typescript-eslint/naming-convention */
 export interface Addresses {
   UniswapV3Factory: string;
@@ -6,6 +8,7 @@ export interface Addresses {
   WETH: string;
   WMATIC: string;
   USDC: string;
+  USDT: string;
   ArrakisV2Implementation: string;
   ArrakisV2Beacon: string;
   ArrakisV2Factory: string;
@@ -23,6 +26,7 @@ export const getAddresses = (network: string): Addresses => {
         WETH: "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619",
         WMATIC: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
         USDC: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+        USDT: ethers.constants.AddressZero,
         ArrakisV2Implementation: "0x7F346F1eB7a65fF83f51B3FD76dCc70979e6DF38",
         ArrakisV2Beacon: "0x1D91F6D917ec51dE53A5789c34fFF777a58759B6",
         ArrakisV2Factory: "0xECb8Ffcb2369EF188A082a662F496126f66c8288",
@@ -37,6 +41,7 @@ export const getAddresses = (network: string): Addresses => {
         WETH: "0x4200000000000000000000000000000000000006",
         WMATIC: "",
         USDC: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        USDT: "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2",
         ArrakisV2Implementation: "0x33443B4942581d0Aa6F0E1076eaA18ed72C07a2D",
         ArrakisV2Beacon: "0xA1DBa91D55D75a8Eb1E6C40053cb264ec072EFe2",
         ArrakisV2Factory: "0x31b383B929d7Dd30299854aa82Bc8112fa23990b",
