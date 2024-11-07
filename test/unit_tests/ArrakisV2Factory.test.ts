@@ -130,7 +130,7 @@ describe.only("Factory function unit test", function () {
 
     const tx = await arrakisV2Factory.connect(impersonateOwner).deployVault(
       {
-        feeTiers: [10000], // was 500
+        feeTiers: [500], // was 500
         token0: token0,
         token1: token1,
         owner: "0x0625Db97368dF1805314E68D0E63e5eB154B9AE6", // we we owner
