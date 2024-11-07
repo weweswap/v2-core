@@ -60,7 +60,7 @@ const config: HardhatUserConfig = {
       accounts: {
         accountsBalance: ethers.utils.parseEther("10000").toString(),
       },
-      blockGasLimit: 21000000,
+      // blockGasLimit: 2100000,
     },
     mainnet: {
       accounts: PK ? [PK] : [],
