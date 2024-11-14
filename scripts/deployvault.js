@@ -79,24 +79,24 @@ const deployVault = async () => {
     "0x137c8040d44e25D2c7677224165Da6Aa0901e33B"
   ];
   
-  for (let i = 0; i < vault_addresses.length; i++) {
-    const vault = new ethers.Contract(vault_addresses[i], vaultAbi, provider);
-    const factory = await vault.factory();
-    const manager = await vault.manager();
-    const feeManager = await vault.feeManager();
-    const token0 = await vault.token0();
-    const token1 = await vault.token1();
+  // for (let i = 0; i < vault_addresses.length; i++) {
+  //   const vault = new ethers.Contract(vault_addresses[i], vaultAbi, provider);
+  //   const factory = await vault.factory();
+  //   const manager = await vault.manager();
+  //   const feeManager = await vault.feeManager();
+  //   const token0 = await vault.token0();
+  //   const token1 = await vault.token1();
 
-    console.log("");
-    console.log("Vault: ", i, " ", vault_addresses[i]);
-    console.log("************************************");
-    console.log("Factory: ", factory);
-    console.log("Manager: ", manager);
-    console.log("Fee Manager: ", feeManager);
-    console.log("Token0: ", token0);
-    console.log("Token1: ", token1);
-    console.log("************************************");
-  }
+  //   console.log("");
+  //   console.log("Vault: ", i, " ", vault_addresses[i]);
+  //   console.log("************************************");
+  //   console.log("Factory: ", factory);
+  //   console.log("Manager: ", manager);
+  //   console.log("Fee Manager: ", feeManager);
+  //   console.log("Token0: ", token0);
+  //   console.log("Token1: ", token1);
+  //   console.log("************************************");
+  // }
 
   const setFeeManager = false;
   if (setFeeManager) {
@@ -106,24 +106,33 @@ const deployVault = async () => {
     console.log(receipt);
   }
 
-  const vaultFactoryAbi = [
-    // "function vaults(uint256 startIndex_, uint256 endIndex_) external view returns (address[] memory)",
-    "function numVaults() public view returns (uint256)"
-  ];
+  // const vaultFactoryAbi = [
+  //   // "function vaults(uint256 startIndex_, uint256 endIndex_) external view returns (address[] memory)",
+  //   "function numVaults() public view returns (uint256)"
+  // ];
 
-  const vaultFactory = new ethers.ContractFactory(
-    "0x7Af5148b733354FC25eAE912Ad5189e0E0a90670", // or proxy? 0xfdf1239e6e4d3422deadbc075b0160bdb3dfa369
-    vaultFactoryAbi,
-    provider
-  );
+  // const vaultFactory = new ethers.ContractFactory(
+  //   "0x7Af5148b733354FC25eAE912Ad5189e0E0a90670", // or proxy? 0xfdf1239e6e4d3422deadbc075b0160bdb3dfa369
+  //   vaultFactoryAbi,
+  //   provider
+  // );
 
-  const numVaults = await vaultFactory.numVaults();
-  console.log(numVaults);
+  // const vaultAbi2 = [
+  //   "function name() external view returns (string)",
+  // ];
 
-  // const vaultFactory = VaultFactory.attach(resolverAddress);
+  const vault = new ethers.Contract(vault_3_address, vaultAbi, provider);
+  const token0 = await vault.token0();
 
-  const vaults = await vaultFactory.vaults(0, 2);
-  console.log(vaults);
+  console.log("token0: ", token0);
+
+  // const numVaults = await vaultFactory.numVaults();
+  // console.log(numVaults);
+
+  // // const vaultFactory = VaultFactory.attach(resolverAddress);
+
+  // const vaults = await vaultFactory.vaults(0, 2);
+  // console.log(vaults);
 
   // const pk = process.env.PK;
   // if (!pk) {
