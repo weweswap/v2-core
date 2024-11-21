@@ -14,6 +14,10 @@ dotenv.config();
 
 // const dcaContract = new ethers.Contract("0xCa227Cb6197B57d08888982bfA93619F67B4773A", abi, provider)
 
+const getStandardRebalance = () => {
+  const resolverAddress = "0x4faFE3078F0aFa3048AfD19522e047EC764FBF48";
+}
+
 const deployVault = async () => {
   // const resolverAddress = "0x8512828605abC5c10d58254B25921E7a5735012c";
 
